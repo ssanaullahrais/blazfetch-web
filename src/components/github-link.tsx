@@ -40,12 +40,12 @@ function PixelHeart() {
   );
 }
 
-/** Footer that mirrors the header: the GitHub link on the left edge, the credit on the right edge. It opens the
+/** Centered footer: the GitHub link and the credit, side by side with a separator on wide screens and stacked on phones. It opens the
  * project's main repository, whose README links the backend too. */
 export function GithubFooter() {
   return (
     <footer className="absolute inset-x-0 bottom-0 text-xs text-muted-foreground">
-      <div className="mx-auto flex w-full max-w-[1340px] flex-col items-center gap-1 px-4 py-4 sm:flex-row sm:justify-between sm:gap-x-4">
+      <div className="mx-auto flex w-full max-w-[1340px] flex-col items-center justify-center gap-1 px-4 py-4 sm:flex-row sm:gap-x-3">
         <a
           href={REPOS[0].url}
           target="_blank"
@@ -56,6 +56,7 @@ export function GithubFooter() {
           Open source on GitHub
           <ExternalLink className="size-3" />
         </a>
+        <span aria-hidden className="hidden text-muted-foreground/50 sm:inline">|</span>
         <p className="inline-flex items-center gap-1">
           Developed with <PixelHeart /> BlazTools
         </p>
