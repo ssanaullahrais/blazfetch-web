@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ShieldCheck } from "lucide-react";
 import { API } from "@/lib/api";
 import { Button } from "@/components/ui/button";
-import { initTurnstile, loadTurnstileScript, markCheckFailed, markPassLost, submitToken, useTurnstile } from "@/lib/turnstile";
+import { initTurnstile, loadTurnstileScript, markCheckFailed, retryTurnstile, submitToken, useTurnstile } from "@/lib/turnstile";
 
 /** How long the background check may run before the widget is shown in full, so the visitor can click it. */
 const SHOW_AFTER_MS = 6000;
@@ -15,13 +15,13 @@ const SHOW_AFTER_MS = 6000;
  * Turnstile turned off.
  */
 export function TurnstileWidget() {
-  const { status, siteKey } = useTurnstile();
+  const { status, siteKey, action } = useTurnstile();
   const container = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    void initTurnstile(API);
+    void initTurnstile(API).catch(() => markCheckFailed());
   }, []);
 
   // A check that is taking long is shown in full; a finished or idle one goes back to background mode.
@@ -42,7 +42,7 @@ export function TurnstileWidget() {
     }
   }, [status]);
 
-  // Draw the widget when a check is needed (again with the visible look once `visible` turns on).
+  // Keep the same challenge mounted while it runs. Cloudflare shows it when interaction is needed.
   useEffect(() => {
     if (status !== "needed" || !siteKey || !container.current) return;
     let cancelled = false;
@@ -55,7 +55,8 @@ export function TurnstileWidget() {
         }
         widgetId.current = turnstile.render(container.current, {
           sitekey: siteKey,
-          appearance: visible ? "always" : "interaction-only",
+          appearance: "interaction-only",
+          ...(action ? { action } : {}),
           execution: "render",
           size: "flexible",
           theme: "light", // the light widget reads best on both themes
@@ -72,7 +73,7 @@ export function TurnstileWidget() {
     return () => {
       cancelled = true;
     };
-  }, [status, siteKey, visible]);
+  }, [status, siteKey, action]);
 
   useEffect(
     () => () => {
@@ -91,7 +92,7 @@ export function TurnstileWidget() {
       {status === "error" && (
         <div className="flex flex-col items-center gap-2 text-center">
           <p className="text-xs text-destructive">The security check could not be completed.</p>
-          <Button size="sm" variant="outline" onClick={() => markPassLost()}>
+          <Button size="sm" variant="outline" onClick={() => void retryTurnstile()}>
             Try again
           </Button>
         </div>

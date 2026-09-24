@@ -15,10 +15,12 @@ export type TurnstileStatus =
   | "passed"
   | "error";
 
-type State = { status: TurnstileStatus; siteKey: string; sessionSeconds: number };
+type State = { status: TurnstileStatus; siteKey: string; sessionSeconds: number; action: string };
 
-let state: State = { status: "unknown", siteKey: "", sessionSeconds: 1800 };
-let apiBase = "";
+let state: State = { status: "unknown", siteKey: "", sessionSeconds: 1800, action: "" };
+let apiBase = `${import.meta.env.VITE_API_BASE || ""}/api/v1`;
+let configPromise: Promise<void> | null = null;
+let configLoaded = false;
 const listeners = new Set<() => void>();
 let renewTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -41,22 +43,31 @@ export function useTurnstile(): State {
 /** Reads the backend's public settings once. Safe to call repeatedly. */
 export async function initTurnstile(base: string): Promise<void> {
   apiBase = base;
-  if (state.status !== "unknown") return;
-  try {
-    const res = await fetch(`${base}/config`, { credentials: "include" });
-    const data = await res.json();
-    if (data?.turnstile?.enabled && data.turnstile.siteKey) {
-      set({ status: "idle", siteKey: data.turnstile.siteKey, sessionSeconds: data.turnstile.sessionSeconds ?? 1800 });
-    } else {
-      set({ status: "off" });
+  if (configLoaded) return;
+  if (configPromise) return configPromise;
+  configPromise = (async () => {
+    try {
+      const res = await fetch(`${base}/config`, { credentials: "include", cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || data?.success !== true || typeof data?.turnstile?.enabled !== "boolean") throw new Error("Invalid configuration");
+      if (data.turnstile.enabled) {
+        if (!data.turnstile.siteKey) throw new Error("Missing site key");
+        set({ status: "idle", siteKey: data.turnstile.siteKey, sessionSeconds: data.turnstile.sessionSeconds ?? 1800, action: data.turnstile.action ?? "" });
+      } else {
+        set({ status: "off" });
+      }
+      configLoaded = true;
+    } catch {
+      set({ status: "error" });
+      throw new ApiError("NETWORK_ERROR", "The security settings could not be loaded. Please try again.");
     }
-  } catch {
-    set({ status: "off" }); // an old backend without /config: behave as if there is no check
-  }
+  })();
+  try { await configPromise; } finally { configPromise = null; }
 }
 
 /** Sends a solved widget token to the backend, which answers with the pass cookie. */
 export async function submitToken(token: string): Promise<void> {
+  if (state.status === "verifying" || state.status === "passed") return;
   set({ status: "verifying" });
   try {
     const res = await fetch(`${apiBase}/turnstile/verify`, {
@@ -66,11 +77,13 @@ export async function submitToken(token: string): Promise<void> {
       body: JSON.stringify({ token }),
     });
     const data = await res.json().catch(() => null);
-    if (!res.ok || data?.success === false) throw new Error(data?.error?.message ?? "verification failed");
+    if (!res.ok || data?.success !== true) throw new Error(data?.error?.message ?? "verification failed");
+    if (data.enabled === false) { set({ status: "off" }); return; }
     set({ status: "passed" });
     // Ask again a little before the pass expires, so it never lapses in the middle of a session.
     clearTimeout(renewTimer);
-    renewTimer = setTimeout(() => markPassLost(), Math.max(60, state.sessionSeconds - 60) * 1000);
+    const seconds = Number.isFinite(data.expiresIn) && data.expiresIn > 0 ? data.expiresIn : state.sessionSeconds;
+    renewTimer = setTimeout(() => markPassLost(), Math.max(1, seconds - Math.min(60, seconds / 2)) * 1000);
   } catch {
     set({ status: "error" });
   }
@@ -89,9 +102,16 @@ export function markPassLost(): void {
   set({ status: "idle" });
 }
 
+export async function retryTurnstile(): Promise<void> {
+  try {
+    await initTurnstile(apiBase);
+    if (state.status !== "off") set({ status: "needed" });
+  } catch { /* initTurnstile already exposes a retryable error. */ }
+}
+
 /** Resolves once the visitor holds a valid pass. Immediately when Turnstile is off. */
 export async function waitForPass(): Promise<void> {
-  if (state.status === "unknown") await initTurnstile(apiBase);
+  if (!configLoaded) await initTurnstile(apiBase);
   if (state.status === "off" || state.status === "passed") return;
   // Start the check now (this is the first action that needs it); a plain visit never gets here.
   if (state.status === "idle" || state.status === "error") set({ status: "needed" });
@@ -109,6 +129,7 @@ export async function waitForPass(): Promise<void> {
     };
     const timer = setTimeout(() => {
       listeners.delete(check);
+      markCheckFailed();
       reject(new ApiError("TURNSTILE_REQUIRED", "The security check did not finish. Please try again."));
     }, WAIT_LIMIT_MS);
     listeners.add(check);
@@ -139,11 +160,19 @@ export function loadTurnstileScript(): Promise<TurnstileApi> {
     const script = document.createElement("script");
     script.src = SCRIPT_URL;
     script.async = true;
-    script.onload = () => (window.turnstile ? resolve(window.turnstile) : reject(new Error("Turnstile did not load")));
-    script.onerror = () => {
+    const fail = () => {
+      clearTimeout(timer);
       scriptPromise = null;
+      script.remove();
       reject(new Error("Turnstile could not be loaded"));
     };
+    const timer = setTimeout(fail, 15_000);
+    script.onload = () => {
+      clearTimeout(timer);
+      if (window.turnstile) resolve(window.turnstile);
+      else fail();
+    };
+    script.onerror = fail;
     document.head.appendChild(script);
   });
   return scriptPromise;

@@ -8,8 +8,8 @@ async function freshModule() {
 }
 
 describe("turnstile", () => {
-  beforeEach(() => vi.stubGlobal("fetch", vi.fn()));
-  afterEach(() => vi.unstubAllGlobals());
+  beforeEach(() => { vi.useFakeTimers(); vi.stubGlobal("fetch", vi.fn()); });
+  afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
   it("does nothing when the backend has Turnstile off", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(reply({ success: true, turnstile: { enabled: false } }));
@@ -18,11 +18,13 @@ describe("turnstile", () => {
     await expect(t.waitForPass()).resolves.toBeUndefined();
   });
 
-  it("treats a backend without /config as having no check", async () => {
+  it("fails closed on a config outage and retries the configuration on the next action", async () => {
     vi.mocked(fetch).mockRejectedValueOnce(new Error("offline"));
     const t = await freshModule();
-    await t.initTurnstile("/api/v1");
+    await expect(t.initTurnstile("/api/v1")).rejects.toMatchObject({ code: 'NETWORK_ERROR' });
+    vi.mocked(fetch).mockResolvedValueOnce(reply({ success: true, turnstile: { enabled: false } }));
     await expect(t.waitForPass()).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(2);
   });
 
   it("holds requests until the token is accepted, then lets them through", async () => {
@@ -61,8 +63,34 @@ describe("turnstile", () => {
     expect(typeof useTurnstile).toBe("function");
     t.markPassLost();
     let released = false;
-    void t.waitForPass().then(() => (released = true));
+    const waiting = t.waitForPass().then(() => (released = true));
     await Promise.resolve();
     expect(released).toBe(false);
+    const rejected = expect(waiting).rejects.toMatchObject({ code: 'TURNSTILE_FAILED' });
+    t.markCheckFailed();
+    await rejected;
+  });
+
+  it('shares configuration loading between concurrent callers', async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(reply({ success: true, turnstile: { enabled: false } }));
+    const t = await freshModule();
+    await Promise.all([t.initTurnstile('/api/v1'), t.waitForPass(), t.waitForPass()]);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses the server pass expiry and does not reuse a submitted token', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(reply({ success: true, turnstile: { enabled: true, siteKey: 'key', sessionSeconds: 1800 } }))
+      .mockResolvedValueOnce(reply({ success: true, enabled: true, expiresIn: 60 }));
+    const t = await freshModule();
+    await t.initTurnstile('/api/v1');
+    await Promise.all([t.submitToken('token'), t.submitToken('token')]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    await expect(t.waitForPass()).resolves.toBeUndefined();
+    await vi.advanceTimersByTimeAsync(31000);
+    const waiting = t.waitForPass();
+    const rejected = expect(waiting).rejects.toMatchObject({ code: 'TURNSTILE_FAILED' });
+    t.markCheckFailed();
+    await rejected;
   });
 });
