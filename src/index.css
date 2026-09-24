@@ -127,6 +127,8 @@
 }
 
 @layer base {
+  /* The app draws its own pull-to-refresh loader, so the browser's default must not also trigger. */
+  html, body { overscroll-behavior-y: contain; }
   * {
     @apply border-border outline-ring/50;
     }
