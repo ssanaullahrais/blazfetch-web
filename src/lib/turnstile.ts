@@ -9,7 +9,8 @@ const WAIT_LIMIT_MS = 60_000;
 export type TurnstileStatus =
   | "unknown" // config not loaded yet
   | "off" // the backend does not use Turnstile
-  | "needed" // waiting for the widget to produce a token
+  | "idle" // on, but nothing has asked for it yet: a normal visit shows and does nothing
+  | "needed" // an action needs a pass: the widget runs and we wait for its token
   | "verifying" // token sent to the backend
   | "passed"
   | "error";
@@ -45,7 +46,7 @@ export async function initTurnstile(base: string): Promise<void> {
     const res = await fetch(`${base}/config`, { credentials: "include" });
     const data = await res.json();
     if (data?.turnstile?.enabled && data.turnstile.siteKey) {
-      set({ status: "needed", siteKey: data.turnstile.siteKey, sessionSeconds: data.turnstile.sessionSeconds ?? 1800 });
+      set({ status: "idle", siteKey: data.turnstile.siteKey, sessionSeconds: data.turnstile.sessionSeconds ?? 1800 });
     } else {
       set({ status: "off" });
     }
@@ -75,17 +76,19 @@ export async function submitToken(token: string): Promise<void> {
   }
 }
 
-/** The pass is gone (expired or refused): the widget runs again. */
+/** The pass is gone (expired or refused). The check only runs again when the visitor next does something that needs it. */
 export function markPassLost(): void {
   if (state.status === "off" || state.status === "unknown") return;
   clearTimeout(renewTimer);
-  set({ status: "needed" });
+  set({ status: "idle" });
 }
 
 /** Resolves once the visitor holds a valid pass. Immediately when Turnstile is off. */
 export async function waitForPass(): Promise<void> {
   if (state.status === "unknown") await initTurnstile(apiBase);
   if (state.status === "off" || state.status === "passed") return;
+  // Start the check now (this is the first action that needs it); a plain visit never gets here.
+  if (state.status === "idle" || state.status === "error") set({ status: "needed" });
   await new Promise<void>((resolve, reject) => {
     const check = () => {
       if (state.status === "passed" || state.status === "off") {
