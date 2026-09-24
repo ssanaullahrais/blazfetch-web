@@ -189,6 +189,10 @@ docs/
   DEPLOYMENT.md            production build, Nginx, backend CORS
 ```
 
+## Security
+
+See [SECURITY.md](SECURITY.md) for how to report a problem and what the app protects against.
+
 ## License
 
 Free to use, modify and deploy under the [BlazFetch License](LICENSE), with three conditions: you may **not sell** the

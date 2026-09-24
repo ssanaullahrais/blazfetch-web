@@ -73,6 +73,7 @@ import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { SettingsMenu } from "@/components/settings-menu";
 import { FLOW_STEPS } from "@/lib/flow-steps";
 import { site } from "@/config/site";
+import { safeHref } from "@/lib/safe-url";
 import { applySeo } from "@/lib/seo";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { GithubFooter } from "@/components/github-link";
@@ -1086,7 +1087,7 @@ export function HomePage() {
               <div className="mt-1 flex flex-wrap items-center gap-1">
                 {info.webpage_url && (
                   <Button variant="ghost" size="sm" asChild className="h-6 w-fit gap-1 px-2 text-xs text-muted-foreground">
-                    <a href={info.webpage_url} target="_blank" rel="noopener noreferrer">
+                    <a href={safeHref(info.webpage_url)} target="_blank" rel="noopener noreferrer">
                       {detectPlatformLabel(info.webpage_url)}
                       <ExternalLink className="size-3" />
                     </a>

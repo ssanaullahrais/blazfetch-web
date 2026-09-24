@@ -55,6 +55,21 @@ first-party start cookie and the frame's error page, which needs same origin.
 Then add HTTPS with `sudo certbot --nginx -d example.com`. With this same-domain setup the backend needs no
 CORS change.
 
+## Security headers
+
+Add these to the `server` block so browsers apply sensible protections to the site:
+
+```nginx
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "SAMEORIGIN" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+```
+
+If you use Cloudflare Turnstile, do not add a strict `Content-Security-Policy` without allowing
+`https://challenges.cloudflare.com` for scripts and frames. See [SECURITY.md](../SECURITY.md).
+
 ## Branding and SEO
 
 Set the public address and name before building so the canonical links, sitemap and share previews are right:

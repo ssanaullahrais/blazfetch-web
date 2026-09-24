@@ -1,3 +1,4 @@
+import { safeHref } from "@/lib/safe-url";
 import { useEffect, useState } from "react";
 import type * as React from "react";
 import { getPlatforms } from "@/lib/api";
@@ -226,7 +227,7 @@ function PlatformLink({
     <Tooltip>
       <TooltipTrigger asChild>
         <a
-          href={p.url}
+          href={safeHref(p.url)}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`Open ${p.name}`}
