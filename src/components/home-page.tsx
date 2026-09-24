@@ -1,3 +1,4 @@
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -818,6 +819,7 @@ export function HomePage() {
 
   return (
     <ScrollArea className="h-dvh w-full min-w-0">
+    <PullToRefresh onRefresh={goHome} />
     <div
       className={[
         `relative flex min-h-dvh min-w-0 w-full flex-col items-center justify-center gap-8 px-4 pb-16 sm:pb-16 ${
