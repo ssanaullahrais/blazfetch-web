@@ -66,7 +66,7 @@ export function GithubFooter() {
           <>
             <span aria-hidden className="hidden text-muted-foreground/50 sm:inline">|</span>
             <p
-              className="inline-flex items-center gap-2.5"
+              className="mt-2 inline-flex items-center gap-2.5 sm:mt-0"
               title={`${stats.fetches.toLocaleString()} fetches and ${stats.downloads.toLocaleString()} downloads so far`}
               aria-label={`${stats.fetches.toLocaleString()} fetches and ${stats.downloads.toLocaleString()} downloads so far`}
             >
