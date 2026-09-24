@@ -117,5 +117,5 @@ backend's message.
 
 ## License
 
-Free to use, modify and deploy, but **not to sell**, and the footer credit ("View source on GitHub" and "Developed with ♥ by
+Free to use, modify and deploy, but **not to sell**, and the footer credit ("Give a star on GitHub" and "Developed with ♥ by
 Sanaullah Rais") must stay visible. The build fails if it is removed. See [LICENSE](../LICENSE) and [AGENTS.md](../AGENTS.md).
