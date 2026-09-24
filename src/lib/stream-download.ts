@@ -1,6 +1,7 @@
 import { API_BASE, getDownloadFilename } from "@/lib/api";
 import { ApiError, apiErrorFromBody, parseErrorFromText } from "@/lib/errors";
 import { coerceMediaUrl } from "@/lib/media-url";
+import { markPassLost, waitForPass } from "@/lib/turnstile";
 
 /**
  * How the backend delivers a file (GET /api/v1/stream?mode=...):
@@ -125,7 +126,7 @@ const FRAME_LINGER_MS = 60_000;
  * - If the API is on another origin the page can't see either signal, so the download is simply handed
  *   over (same-origin deployment is recommended, see docs/DEPLOYMENT.md).
  */
-export function startBrowserDownload(params: StreamParams, options: StartOptions = {}): Promise<void> {
+function startBrowserDownloadNow(params: StreamParams, options: StartOptions = {}): Promise<void> {
   const env = options.env ?? browserEnv();
   const { signal, pollMs = 200, maxWaitMs = 12 * 60_000 } = options;
 
@@ -197,6 +198,7 @@ export async function fetchStreamBlob(
   params: StreamParams,
   options: { signal?: AbortSignal; onProgress?: (percent: number) => void; fallbackName: string }
 ): Promise<StreamedBlob> {
+  await waitForPass();
   let res: Response;
   try {
     res = await fetch(buildStreamUrl(params), { credentials: "include", cache: "no-store", signal: options.signal });
@@ -238,4 +240,20 @@ export function saveBlobToDisk(blob: Blob, filename: string) {
   anchor.click();
   anchor.remove();
   setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+}
+
+/** Starts a download, first waiting for the optional Turnstile check and retrying once if the pass had lapsed. */
+export async function startBrowserDownload(params: StreamParams, options: StartOptions = {}): Promise<void> {
+  if (options.env) return startBrowserDownloadNow(params, options); // tests drive the browser stand-in directly
+  await waitForPass();
+  try {
+    return await startBrowserDownloadNow(params, options);
+  } catch (err) {
+    if (err instanceof ApiError && err.code === "TURNSTILE_REQUIRED") {
+      markPassLost();
+      await waitForPass();
+      return startBrowserDownloadNow(params, options);
+    }
+    throw err;
+  }
 }

@@ -66,6 +66,28 @@ downloaded a second time.
   proxy images). Board responses include `metadata.totalPinCount`, which drives the range picker.
 - **Platform id:** the backend reports X as `twitter`; the logo set keys it as `x`, and both resolve to the X logo.
 
+## Cloudflare Turnstile (optional bot check)
+
+Turnstile is switched on and off in the **backend's** `.env` (`TURNSTILE_ENABLED`, `TURNSTILE_SITE_KEY`,
+`TURNSTILE_SECRET_KEY`); the frontend needs no setting of its own. It reads the public site key from
+`GET /api/v1/config` when the page loads and shows nothing at all when the check is off.
+
+When it is on:
+
+1. [`TurnstileWidget`](../src/components/turnstile-widget.tsx) draws the Cloudflare widget below the platform carousel,
+   where the result card appears. It uses `appearance: "interaction-only"`, so most visitors see nothing and a small
+   checkbox appears only when Cloudflare needs one. The light widget is used on both themes.
+2. The solved token goes to `POST /api/v1/turnstile/verify`; the backend validates it with Cloudflare and sets a signed
+   pass cookie (30 minutes by default). The frontend asks again a minute before it expires.
+3. [`request()`](../src/lib/api.ts) (fetch and download calls), `startBrowserDownload()` and `fetchStreamBlob()` wait for
+   the pass first, and retry once if the backend answers `403 TURNSTILE_REQUIRED`. State lives in
+   [`src/lib/turnstile.ts`](../src/lib/turnstile.ts).
+
+Same origin is recommended (see [DEPLOYMENT.md](DEPLOYMENT.md)): the pass is an HttpOnly cookie, and downloads are plain
+browser navigations that carry it. For local testing use Cloudflare's dummy keys (they always pass on localhost):
+site key `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`. The widget's hostname list in the
+Cloudflare dashboard must include your domain (and `localhost` for real keys used locally).
+
 ## Errors
 
 The backend always returns `{ success: false, error: { code, message } }`. `request()` in `api.ts` throws an

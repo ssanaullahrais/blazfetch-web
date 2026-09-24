@@ -63,6 +63,8 @@ const MESSAGES: Record<string, string> = {
   INVALID_URL: "That doesn't look like a valid link.",
   MEDIA_NOT_FOUND: "That video couldn't be found. It may have been removed, or the link is wrong.",
   MEDIA_UNAVAILABLE: "This video is no longer available.",
+  TURNSTILE_REQUIRED: "Please wait a moment while we check that you are human, then try again.",
+  TURNSTILE_FAILED: "The security check failed. Reload the page and try again.",
   PRIVATE_MEDIA: "This video is private, so it can't be downloaded.",
   LOGIN_REQUIRED: "This video needs a login, so it can't be downloaded.",
   AGE_RESTRICTED: "This video is age-restricted, so it can't be downloaded.",
