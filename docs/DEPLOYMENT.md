@@ -74,3 +74,14 @@ git pull && pnpm install --frozen-lockfile && pnpm build
 
 Copy the new `dist/` over the old one. The app registers a service worker that updates itself, so returning
 visitors get the new version on their next load.
+
+## Troubleshooting
+
+| Problem | Fix |
+|---|---|
+| Blank page on a stable link such as `/youtube/<id>` after reload | Nginx must fall back to `index.html` (`try_files $uri /index.html`). |
+| Every request fails or the status button is red | `/api` and `/health` must be proxied to the backend. Check `https://your-domain/health/ready`. |
+| Downloads start but errors are never shown | The API is on another origin. Serve `/api` from the same domain. |
+| Downloads cut off or hang | `proxy_buffering off` and a long `proxy_read_timeout` on `/api/`. |
+| A fix on the backend does not show for a link you already fetched | Results are stored. Click **Refresh** on the result once. |
+| Video plays black on a phone | Backend issue, fixed by updating it and using `DEFAULT_DOWNLOAD_MODE=auto`. See the backend's VPS guide. |
