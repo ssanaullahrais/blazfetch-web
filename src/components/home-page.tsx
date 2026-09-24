@@ -856,7 +856,7 @@ export function HomePage() {
     <PullToRefresh onRefresh={goHome} />
     <div
       className={[
-        `relative flex min-h-svh min-w-0 w-full flex-col items-center justify-center gap-8 px-4 pb-16 sm:pb-16 ${
+        `relative flex min-h-svh min-w-0 w-full flex-col items-center justify-center gap-8 px-4 pb-32 sm:pb-24 ${
           loading || info ? "pt-32 sm:pt-24" : "pt-24 sm:pt-16"
         }`,
         "after:pointer-events-none after:fixed after:inset-0 after:-z-10 after:content-['']",
