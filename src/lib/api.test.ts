@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-import { fetchInfo, getStoredMedia, toMediaInfo } from "@/lib/api"
+import { fallbackTitle, fetchInfo, getStoredMedia, toMediaInfo } from "@/lib/api"
 import { ApiError, getTombstone } from "@/lib/errors"
 import youtube from "@/lib/__fixtures__/youtube.json"
 import youtubePlaylist from "@/lib/__fixtures__/youtube-playlist.json"
@@ -172,3 +172,20 @@ describe("fetchInfo / getStoredMedia", () => {
     await expect(fetchInfo("https://example.com/v")).rejects.toMatchObject({ code: "NETWORK_ERROR" })
   })
 })
+
+describe("fallbackTitle", () => {
+  it("names untitled media by platform and content", () => {
+    const base = { extractor: "instagram", audioOnly: false };
+    expect(fallbackTitle({ ...base, type: "images", images: [{}, {}] as never })).toBe("Instagram Images");
+    expect(fallbackTitle({ ...base, type: "images", images: [{}] as never })).toBe("Instagram Image");
+    expect(fallbackTitle({ ...base, type: "carousel", images: [{}] as never, carouselVideos: [{}] as never })).toBe("Instagram Images & Videos");
+    expect(fallbackTitle({ ...base, type: "carousel", carouselVideos: [{}, {}] as never })).toBe("Instagram Videos");
+    expect(fallbackTitle({ ...base, type: "video" })).toBe("Instagram Video");
+    expect(fallbackTitle({ extractor: "twitter", type: "video", audioOnly: true })).toBe("X Audio");
+  });
+
+  it("is used when the backend sends no title", () => {
+    const info = toMediaInfo(asApi({ ...pinterestBoard, title: undefined }));
+    expect(info.title).toMatch(/^Pinterest Images/);
+  });
+});
