@@ -25,11 +25,13 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => void }) {
   const startY = useRef<number | null>(null);
   const pullRef = useRef(0);
   const busy = useRef(false);
+  const [dragging, setDragging] = useState(false);
 
   useEffect(() => {
     const onStart = (e: TouchEvent) => {
       if (busy.current || e.touches.length !== 1 || insideScrolledContainer(e.target)) return;
       startY.current = e.touches[0].clientY;
+      setDragging(true);
     };
     const onMove = (e: TouchEvent) => {
       if (startY.current === null || busy.current) return;
@@ -52,6 +54,7 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => void }) {
     const onEnd = () => {
       if (startY.current === null) return;
       startY.current = null;
+      setDragging(false);
       if (pullRef.current >= TRIGGER_DISTANCE * RESISTANCE + 16) {
         busy.current = true;
         setRefreshing(true);
@@ -80,7 +83,7 @@ export function PullToRefresh({ onRefresh }: { onRefresh: () => void }) {
     <div
       aria-hidden
       className="pointer-events-none fixed inset-x-0 top-0 z-50 flex justify-center"
-      style={{ transform: `translateY(${pull - 8}px)`, transition: startY.current === null ? "transform 200ms ease" : "none" }}
+      style={{ transform: `translateY(${pull - 8}px)`, transition: dragging ? "none" : "transform 200ms ease" }}
     >
       <div className="flex size-10 items-center justify-center rounded-full border border-border bg-popover text-foreground shadow-lg">
         {refreshing ? (
