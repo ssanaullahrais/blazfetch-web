@@ -124,18 +124,19 @@ function BrandMark({ state, progress = 0, className = "size-7" }: { state: Brand
     const timer = window.setInterval(() => setStep((n) => (n + 1) % FLOW_STEPS.length), 1800);
     return () => window.clearInterval(timer);
   }, [state, reduceMotion]);
-  const current = state === "downloading" ? { Icon: Download, radius: 8 } : { Icon: FLOW_STEPS[step].Icon, radius: [8, 14, 6][step] };
+  const current = state === "downloading" ? { Icon: Download, radius: 8 } : { Icon: FLOW_STEPS[step].Icon, radius: 8 };
   const Icon = current.Icon;
   const popKey = state === "downloading" ? "download" : step;
 
   return (
     <span className={`relative flex shrink-0 items-center justify-center ${className}`}>
-      {/* The tile and its icon pop in together on every step, and the tile changes its corner radius as it does. */}
+      {/* The whole tile flips in on every step (the icon comes with it); the corner radius stays the same throughout. */}
       <motion.span
         key={popKey}
-        initial={reduceMotion ? false : { scale: 0.65, rotate: -12, opacity: 0.3 }}
-        animate={{ scale: 1, rotate: 0, opacity: 1, borderRadius: current.radius }}
-        transition={{ type: "spring", stiffness: 380, damping: 20 }}
+        initial={reduceMotion ? false : { rotateY: -100, scale: 0.8, opacity: 0.3 }}
+        animate={{ rotateY: 0, scale: 1, opacity: 1, borderRadius: current.radius }}
+        transition={{ type: "spring", stiffness: 260, damping: 18 }}
+        style={{ transformPerspective: 400 }}
         className="absolute inset-0 flex items-center justify-center border border-black/10 bg-white text-black"
       >
         <Icon className="size-[50%]" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
@@ -144,14 +145,14 @@ function BrandMark({ state, progress = 0, className = "size-7" }: { state: Brand
       {/* The ring follows the square's outline: an arc running around it while working, a fill for real progress. */}
       {(state === "fetching" || state === "downloading") && (
         <svg className="pointer-events-none absolute inset-[-3px]" viewBox="0 0 100 100" fill="none">
-          <rect x="3" y="3" width="94" height="94" rx="14" stroke="var(--foreground)" strokeOpacity="0.15" strokeWidth="5" />
+          <rect x="3" y="3" width="94" height="94" rx="20" stroke="var(--foreground)" strokeOpacity="0.15" strokeWidth="5" />
           {state === "fetching" || indeterminate ? (
             <motion.rect
               x="3"
               y="3"
               width="94"
               height="94"
-              rx="14"
+              rx="20"
               pathLength={100}
               stroke="var(--foreground)"
               strokeOpacity="0.85"
@@ -167,7 +168,7 @@ function BrandMark({ state, progress = 0, className = "size-7" }: { state: Brand
               y="3"
               width="94"
               height="94"
-              rx="14"
+              rx="20"
               pathLength={100}
               stroke="var(--foreground)"
               strokeWidth="5"
