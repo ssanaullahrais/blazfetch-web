@@ -19,7 +19,7 @@ export type Preferences = {
 
 // Defaults for a fresh visitor; anything they change is stored as an override.
 const HARDCODED_DEFAULTS: Preferences = {
-  defaultMode: "audio",
+  defaultMode: "video",
   preferredQuality: "best",
   fetchOnPaste: true,
   autoDownloadBest: false,
