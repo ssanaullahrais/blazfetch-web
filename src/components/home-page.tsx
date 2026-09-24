@@ -72,6 +72,7 @@ import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { SettingsMenu } from "@/components/settings-menu";
+import { PixelBolt } from "@/components/pixel-icons";
 import { GithubFooter } from "@/components/github-link";
 import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
@@ -954,8 +955,9 @@ export function HomePage() {
           <button
             type="button"
             onClick={goHome}
-            className="rounded-full text-3xl font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:text-4xl"
+            className="inline-flex items-center gap-2.5 rounded-full text-3xl font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:text-4xl"
           >
+            <PixelBolt className="h-8 w-[1.7rem] sm:h-10 sm:w-[2.1rem]" />
             BlazFetch
           </button>
         </h1>
@@ -1471,7 +1473,7 @@ function ImageFormatList({
         const title = `${sanitizeFilenameLocal(info.title)}-${index + 1}`;
         return (
           <FormatRow
-            key={image.url}
+            key={`${index}-${image.url}`}
             label={image.ext ? `Image ${index + 1} · ${image.ext.toUpperCase()}` : `Image ${index + 1}`}
             sub={title}
             sizeLabel={formatBytes(image.filesize) ?? undefined}
