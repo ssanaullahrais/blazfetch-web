@@ -116,6 +116,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Stable pages | Each item's permanent path is put in the address bar and can be shared |
 | Media store info | Download count, "May be outdated" (revalidation failed) and "Backup source" (fallback provider) badges, playlist page link |
 | Unavailable media | A removed video (HTTP 410) shows a "No longer available" card with the reason and dates |
+| White label and SEO | The site name, tagline, description and URL come from one file (`src/config/site.ts`) or `VITE_SITE_*` variables, and feed the header, tab titles, share text, app name, meta tags, Open Graph, JSON-LD, sitemap and robots. Result pages get their own title, description and preview |
 | Legacy share links | `/?url=<link>` still fetches on load |
 | Animated logo | The header logo cycles copy link, paste and download, and shows the fetch and download progress ring around it (still when the device asks for reduced motion) |
 | GitHub links | A quiet "Open source on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
@@ -139,6 +140,7 @@ To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `VITE_SITE_NAME`, `VITE_SITE_TAGLINE`, `VITE_SITE_DESCRIPTION`, `VITE_SITE_URL`, ... | BlazFetch, ... | White label and SEO: name, tagline, description, public URL and more. See [docs/BRANDING.md](docs/BRANDING.md) |
 | `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
 | `VITE_ENABLE_AUDIO_PREVIEW` | off | `true` shows the play button on audio rows (previews are off because most audio is M4A/WebM) |
 | `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks Fastest, Compatible MP4 and With progress bar in Settings |
@@ -198,6 +200,7 @@ author for written permission on [GitHub](https://github.com/ssanaullahrais).
 ## Documentation
 
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): endpoint-by-endpoint mapping, data shapes and the download flow
+- [docs/BRANDING.md](docs/BRANDING.md): white label the name, tagline, icons and SEO from one file
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): building and serving with Nginx
 - [Backend README](https://github.com/ssanaullahrais/blazfetch-api): backend setup and databases
 - [Backend API reference](https://github.com/ssanaullahrais/blazfetch-api/blob/master/docs/API.md) and its OpenAPI file
