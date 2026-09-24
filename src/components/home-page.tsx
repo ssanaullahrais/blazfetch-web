@@ -880,7 +880,7 @@ export function HomePage() {
               onClick={goHome}
               className="hidden items-center gap-2.5 rounded-full text-base font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 lg:flex"
             >
-              <BrandMark state={brandState} progress={brandProgress} className="size-9" />
+              <BrandMark state={brandState} progress={brandProgress} className="size-10" />
               BlazFetch
             </button>
 
@@ -894,7 +894,7 @@ export function HomePage() {
                 <SheetContent side="left" className="w-[min(20rem,calc(100vw-1.5rem))] px-0">
                   <SheetHeader className="border-b px-4 py-4">
                     <SheetTitle className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-                      <BrandMark state={brandState} progress={brandProgress} className="size-9" />
+                      <BrandMark state={brandState} progress={brandProgress} className="size-10" />
                       BlazFetch
                     </SheetTitle>
                   </SheetHeader>
@@ -935,7 +935,7 @@ export function HomePage() {
               onClick={goHome}
               className="flex items-center gap-2 rounded-full text-base font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:hidden"
             >
-              <BrandMark state={brandState} progress={brandProgress} className="size-9" />
+              <BrandMark state={brandState} progress={brandProgress} className="size-10" />
               BlazFetch
             </button>
           </div>
