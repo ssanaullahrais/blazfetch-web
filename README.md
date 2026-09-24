@@ -81,8 +81,8 @@ npm run dev            # http://localhost:4000
 **2. Start the frontend** (Node.js 20+ and [pnpm](https://pnpm.io) 10+):
 
 ```bash
-git clone https://github.com/ssanaullahrais/blazfetch-frontend.git
-cd blazfetch-frontend
+git clone https://github.com/ssanaullahrais/blazfetch-social-downloader-frontend.git
+cd blazfetch-social-downloader-frontend
 pnpm install
 pnpm dev               # http://localhost:3000
 ```
