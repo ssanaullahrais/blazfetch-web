@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Search } from "lucide-react";
 import { formatCount, useSiteStats } from "@/lib/site-stats";
 
 const REPOS = [
@@ -65,8 +65,20 @@ export function GithubFooter() {
         {stats && (
           <>
             <span aria-hidden className="hidden text-muted-foreground/50 sm:inline">|</span>
-            <p title={`${stats.fetches.toLocaleString()} fetches and ${stats.downloads.toLocaleString()} downloads so far`}>
-              {formatCount(stats.fetches)} fetches <span aria-hidden>·</span> {formatCount(stats.downloads)} downloads
+            <p
+              className="inline-flex items-center gap-2.5"
+              title={`${stats.fetches.toLocaleString()} fetches and ${stats.downloads.toLocaleString()} downloads so far`}
+              aria-label={`${stats.fetches.toLocaleString()} fetches and ${stats.downloads.toLocaleString()} downloads so far`}
+            >
+              <span className="inline-flex items-center gap-1">
+                <Search className="size-3.5" aria-hidden />
+                {formatCount(stats.fetches)}
+              </span>
+              <span aria-hidden>·</span>
+              <span className="inline-flex items-center gap-1">
+                <Download className="size-3.5" aria-hidden />
+                {formatCount(stats.downloads)}
+              </span>
             </p>
           </>
         )}
