@@ -6,6 +6,7 @@
 import { coerceMediaUrl } from "@/lib/media-url";
 import { ApiError, apiErrorFromBody } from "@/lib/errors";
 import { markPassLost, waitForPass } from "@/lib/turnstile";
+import { notifyStatsChanged } from "@/lib/stats-events";
 
 export { ApiError, friendlyError, friendlyErrorFor, errorTitleFor, firstSentence, getTombstone } from "@/lib/errors";
 export type { Tombstone } from "@/lib/errors";
@@ -19,7 +20,9 @@ export async function request<T>(path: string, init: RequestInit = {}): Promise<
   const protectedCall = /^\/(fetch|download)(\/|$)/.test(path);
   if (protectedCall) await waitForPass();
   try {
-    return await send<T>(path, init);
+    const result = await send<T>(path, init);
+    if (protectedCall) notifyStatsChanged();
+    return result;
   } catch (err) {
     if (protectedCall && err instanceof ApiError && err.code === "TURNSTILE_REQUIRED") {
       // The pass lapsed (or was never accepted): run the check again and retry once.
@@ -451,6 +454,8 @@ export async function fetchInfo(url: string, options: FetchOptions = {}): Promis
  */
 export async function getStoredMedia(path: string): Promise<MediaInfo> {
   const data = await request<ApiFetchResponse>(`/media${path}`);
+  // Opening a stored page counts as a fetch on the backend, so the footer counter refreshes too.
+  notifyStatsChanged();
   const info = toMediaInfo(data);
   return withAudioOptions(info, info.webpage_url);
 }

@@ -121,7 +121,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Legacy share links | `/?url=<link>` still fetches on load |
 | Animated logo | The header logo cycles copy link, paste and download, and shows the fetch and download progress ring around it (still when the device asks for reduced motion) |
 | GitHub links | A quiet "Give a star on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
-| Footer counter | The footer shows the all-time number of fetches and downloads (from the backend's `GET /api/v1/stats`), hidden if the backend has no stats |
+| Footer counter | The footer shows the all-time number of fetches and downloads (from the backend's `GET /api/v1/stats`). It refreshes right after you fetch or download something, opening a stored page counts as a fetch too, and it polls every 20 seconds while the tab is visible so other visitors' activity shows up. Hidden if the backend has no stats |
 | Pull to refresh | On phones, pull down from the top to show a circular loader; releasing reloads the app on the home screen with an empty link box |
 | Settings | Default tab (video or audio), fetch on paste, sounds |
 

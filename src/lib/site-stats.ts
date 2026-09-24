@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { API } from "@/lib/api";
+import { onStatsChanged } from "@/lib/stats-events";
 
 export type SiteStats = { fetches: number; downloads: number };
 
@@ -22,16 +23,41 @@ export function formatCount(value: number): string {
   return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
-/** The totals, loaded once when the component mounts. */
+const POLL_MS = 20_000;
+const REFRESH_DELAY_MS = 900; // the backend counts a moment after the request, so wait a beat before asking
+
+/**
+ * The totals, kept live: loaded on mount, refreshed right after this visitor fetches or downloads something, and
+ * polled every 20 seconds while the tab is visible so other visitors' activity shows up too.
+ */
 export function useSiteStats(): SiteStats | null {
   const [stats, setStats] = useState<SiteStats | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void getSiteStats().then((value) => {
-      if (!cancelled) setStats(value);
+    let delayed: ReturnType<typeof setTimeout> | undefined;
+    const load = () => {
+      void getSiteStats().then((value) => {
+        if (!cancelled && value) setStats(value);
+      });
+    };
+    load();
+    const poll = setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, POLL_MS);
+    const stopListening = onStatsChanged(() => {
+      clearTimeout(delayed);
+      delayed = setTimeout(load, REFRESH_DELAY_MS);
     });
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      clearInterval(poll);
+      clearTimeout(delayed);
+      stopListening();
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
   return stats;
