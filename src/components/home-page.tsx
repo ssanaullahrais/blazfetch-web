@@ -330,6 +330,8 @@ export function HomePage() {
     setUnavailable(null);
     setInfo(data);
     setFetchedUrl(sourceUrl);
+    // The box empties once the result shows; Refresh and Share use the remembered link, and a failed fetch keeps it for retry.
+    setUrl("");
     if (data.type === "images") setActiveTab("images");
     else if (data.type === "carousel") setActiveTab(data.carouselVideos?.length ? "video" : "images");
     else if (data.audioOnly) setActiveTab("audio");
@@ -416,7 +418,6 @@ export function HomePage() {
     resetPerVideoDownloadState();
     try {
       const data = await getStoredMedia(path);
-      setUrl(data.webpage_url);
       showResult(data, data.webpage_url, { keepAddress: true });
     } catch (err) {
       const tombstone = getTombstone(err);
