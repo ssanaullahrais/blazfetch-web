@@ -1,14 +1,70 @@
 import path from "path"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react"
-import { defineConfig } from "vite"
+import { defineConfig, loadEnv, type Plugin } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
+import { createSite, type Site } from "./src/config/site"
+
+const escapeAttr = (text: string): string => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
+/** Fills the %SITE_*% placeholders in index.html and writes robots.txt and sitemap.xml from src/config/site.ts. */
+function siteIdentity(site: Site): Plugin {
+  const jsonLd = JSON.stringify({
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    name: site.name,
+    description: site.description,
+    url: `${site.url}/`,
+    applicationCategory: "MultimediaApplication",
+    operatingSystem: "Any",
+    offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  }).replace(/</g, "\u003c");
+  const values: Record<string, string> = {
+    SITE_NAME: escapeAttr(site.name),
+    SITE_TAGLINE: escapeAttr(site.tagline),
+    SITE_DESCRIPTION: escapeAttr(site.description),
+    SITE_KEYWORDS: escapeAttr(site.keywords),
+    SITE_URL: site.url,
+    SITE_THEME_COLOR: site.themeColor,
+    SITE_LANGUAGE: site.language,
+    SITE_TWITTER_TAG: site.twitter ? `<meta name="twitter:site" content="${escapeAttr(site.twitter)}" />` : "",
+    SITE_JSON_LD: jsonLd,
+  };
+  return {
+    name: "site-identity",
+    transformIndexHtml: (html) => html.replace(/%(SITE_[A-Z_]+)%/g, (whole, key: string) => values[key] ?? whole),
+    generateBundle() {
+      this.emitFile({
+        type: "asset",
+        fileName: "robots.txt",
+        source: `User-agent: *
+Allow: /
+Disallow: /api/
+
+Sitemap: ${site.url}/sitemap.xml
+`,
+      });
+      this.emitFile({
+        type: "asset",
+        fileName: "sitemap.xml",
+        source: `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>${site.url}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+</urlset>
+`,
+      });
+    },
+  };
+}
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const site = createSite({ ...loadEnv(mode, process.cwd(), "VITE_"), ...process.env });
+  return {
   plugins: [
     react(),
     tailwindcss(),
+    siteIdentity(site),
     VitePWA({
       registerType: "autoUpdate",
       // Never precache/intercept API calls — this app is almost entirely
@@ -27,13 +83,13 @@ export default defineConfig({
       },
       includeAssets: ["favicon-32.png", "apple-touch-icon.png"],
       manifest: {
-        name: "BlazFetch",
-        short_name: "BlazFetch",
-        description: "Paste a link, save any video, audio or photo.",
+        name: site.name,
+        short_name: site.name,
+        description: site.tagline,
         start_url: "/",
         display: "standalone",
-        background_color: "#000000",
-        theme_color: "#000000",
+        background_color: site.themeColor,
+        theme_color: site.themeColor,
         icons: [
           { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
           { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
@@ -78,4 +134,5 @@ export default defineConfig({
       },
     },
   },
+}
 })

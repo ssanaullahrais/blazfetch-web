@@ -1,3 +1,4 @@
+import { site } from "@/config/site";
 import { useState } from "react";
 import { Check, Copy, Globe, Link2, Share2 } from "lucide-react";
 import toast from "@/lib/toast";
@@ -39,14 +40,14 @@ export function ShareMenu({
   const [copiedVideo, setCopiedVideo] = useState(false);
 
   async function handleShareApp() {
-    const ok = await shareOrCopy(window.location.origin, "BlazFetch");
+    const ok = await shareOrCopy(window.location.origin, site.name);
     if (ok && !navigator.share) setCopiedApp(true);
     setTimeout(() => setCopiedApp(false), 1500);
   }
 
   async function handleShareVideo() {
     if (!shareableUrl) return;
-    const ok = await shareOrCopy(shareableUrl, "BlazFetch");
+    const ok = await shareOrCopy(shareableUrl, site.name);
     if (ok && !navigator.share) setCopiedVideo(true);
     setTimeout(() => setCopiedVideo(false), 1500);
   }

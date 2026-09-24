@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="%SITE_LANGUAGE%">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -10,14 +10,35 @@
          instead of leaving the default browser-chrome margins an installed
          app doesn't have. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#000000" />
+    <meta name="theme-color" content="%SITE_THEME_COLOR%" />
     <!-- Standalone (no browser chrome) when launched from the home screen —
          iOS only reads its own vendor-prefixed tag for this, Android/
          Chrome reads the manifest's own `display: "standalone"` instead. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="BlazFetch" />
-    <title>BlazFetch</title>
+    <meta name="apple-mobile-web-app-title" content="%SITE_NAME%" />
+    <!-- SEO. Every %SITE_*% value comes from src/config/site.ts (see docs/BRANDING.md). applySeo() in src/lib/seo.ts keeps
+         these tags in step with the result on screen. -->
+    <title>%SITE_NAME% · %SITE_TAGLINE%</title>
+    <meta name="description" content="%SITE_DESCRIPTION%" />
+    <meta name="keywords" content="%SITE_KEYWORDS%" />
+    <meta name="robots" content="index, follow" />
+    <meta name="application-name" content="%SITE_NAME%" />
+    <link rel="canonical" href="%SITE_URL%/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="%SITE_NAME%" />
+    <meta property="og:title" content="%SITE_NAME% · %SITE_TAGLINE%" />
+    <meta property="og:description" content="%SITE_DESCRIPTION%" />
+    <meta property="og:url" content="%SITE_URL%/" />
+    <meta property="og:image" content="%SITE_URL%/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="%SITE_NAME% · %SITE_TAGLINE%" />
+    <meta name="twitter:description" content="%SITE_DESCRIPTION%" />
+    <meta name="twitter:image" content="%SITE_URL%/og-image.png" />
+    %SITE_TWITTER_TAG%
+    <script type="application/ld+json">%SITE_JSON_LD%</script>
   </head>
   <body>
     <div id="root"></div>

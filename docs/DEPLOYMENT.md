@@ -55,6 +55,11 @@ first-party start cookie and the frame's error page, which needs same origin.
 Then add HTTPS with `sudo certbot --nginx -d example.com`. With this same-domain setup the backend needs no
 CORS change.
 
+## Branding and SEO
+
+Set the public address and name before building so the canonical links, sitemap and share previews are right:
+`VITE_SITE_URL=https://your-domain.example VITE_SITE_NAME="Your Name" pnpm build`. See [BRANDING.md](BRANDING.md).
+
 ## 3. Separate API domain (optional)
 
 Build with the API address baked in:

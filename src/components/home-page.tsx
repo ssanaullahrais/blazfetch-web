@@ -72,6 +72,8 @@ import { startNativeDownload } from "@/lib/download";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { SettingsMenu } from "@/components/settings-menu";
 import { FLOW_STEPS } from "@/lib/flow-steps";
+import { site } from "@/config/site";
+import { applySeo } from "@/lib/seo";
 import { GithubFooter } from "@/components/github-link";
 import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
@@ -282,7 +284,7 @@ export function HomePage() {
         setUnavailable(null);
         setUrl("");
         setFetchedUrl("");
-        document.title = "BlazFetch";
+        applySeo();
       }
     };
     window.addEventListener("popstate", onPopState);
@@ -365,7 +367,14 @@ export function HomePage() {
     if (!opts.keepAddress) {
       window.history.replaceState(null, "", data.stored?.path ?? `/?url=${encodeURIComponent(sourceUrl)}`);
     }
-    document.title = `${data.title} · BlazFetch`;
+    applySeo({
+      title: data.title,
+      description: [data.uploader, data.extractor ? `on ${data.extractor}` : null].filter(Boolean).length
+        ? `${data.title}${data.uploader ? ` by ${data.uploader}` : ""}. ${site.tagline}`
+        : undefined,
+      image: data.thumbnail?.startsWith("http") ? data.thumbnail : undefined,
+      path: data.stored?.path ?? null,
+    });
   }
 
   /** The backend remembers this video but found it gone: show what it was instead of an error. */
@@ -378,7 +387,7 @@ export function HomePage() {
       setFetchedUrl(link);
     }
     if (tombstone.path) window.history.replaceState(null, "", tombstone.path);
-    document.title = `${tombstone.title ?? "Video"} (unavailable) · BlazFetch`;
+    applySeo({ title: `${tombstone.title ?? "Video"} (unavailable)`, noindex: true, path: window.location.pathname });
   }
 
   function showFailure(err: unknown) {
@@ -406,7 +415,7 @@ export function HomePage() {
       setUrl(requestedUrl);
       // Clear the previous video's page path from the address bar right away.
       window.history.replaceState(null, "", "/");
-      document.title = "BlazFetch";
+      applySeo();
     }
     try {
       const data = await fetchInfo(requestedUrl, {
@@ -877,7 +886,7 @@ export function HomePage() {
               className="hidden items-center gap-2.5 rounded-full text-base font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 lg:flex"
             >
               <BrandMark state={brandState} progress={brandProgress} className="size-10" />
-              BlazFetch
+              {site.name}
             </button>
 
             <div className="lg:hidden">
@@ -891,7 +900,7 @@ export function HomePage() {
                   <SheetHeader className="border-b px-4 py-4">
                     <SheetTitle className="flex items-center gap-2 text-sm font-semibold tracking-tight">
                       <BrandMark state={brandState} progress={brandProgress} className="size-10" />
-                      BlazFetch
+                      {site.name}
                     </SheetTitle>
                   </SheetHeader>
                   <div className="flex flex-col gap-3 p-4">
@@ -932,7 +941,7 @@ export function HomePage() {
               className="flex items-center gap-2 rounded-full text-base font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:hidden"
             >
               <BrandMark state={brandState} progress={brandProgress} className="size-10" />
-              BlazFetch
+              {site.name}
             </button>
           </div>
 
@@ -961,11 +970,11 @@ export function HomePage() {
             onClick={goHome}
             className="rounded-full text-3xl font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:text-4xl"
           >
-            BlazFetch
+            {site.name}
           </button>
         </h1>
         <p className="mx-auto max-w-[240px] text-center text-sm text-muted-foreground sm:max-w-none">
-          Paste a link, save any video, audio or photo.
+          {site.tagline}
         </p>
       </motion.div>
 
