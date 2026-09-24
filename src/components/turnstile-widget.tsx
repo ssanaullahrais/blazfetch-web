@@ -34,6 +34,14 @@ export function TurnstileWidget() {
     return () => clearTimeout(timer);
   }, [status]);
 
+  // Once the check is passed the widget has done its job: take it out of the page completely.
+  useEffect(() => {
+    if (status === "passed" && widgetId.current) {
+      window.turnstile?.remove(widgetId.current);
+      widgetId.current = null;
+    }
+  }, [status]);
+
   // Draw the widget when a check is needed (again with the visible look once `visible` turns on).
   useEffect(() => {
     if (status !== "needed" || !siteKey || !container.current) return;
@@ -74,8 +82,9 @@ export function TurnstileWidget() {
     [],
   );
 
-  // Nothing is drawn on a normal visit: the check starts only when the visitor fetches or downloads something.
-  if (status === "off" || status === "unknown" || status === "idle") return null;
+  // Nothing is drawn on a normal visit (the check starts only when the visitor fetches or downloads something) or after
+  // the check has been passed.
+  if (status === "off" || status === "unknown" || status === "idle" || status === "passed") return null;
   return (
     <div className="flex w-full max-w-xl flex-col items-center gap-2" aria-live="polite">
       <div ref={container} className="w-full empty:hidden" />
