@@ -103,7 +103,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 
 | Feature | Notes |
 |---|---|
-| Paste button | With an empty box the button reads "Paste": one tap pastes the copied link and fetches it (needs clipboard permission; otherwise long-press the box). With text in the box it reads "Fetch". Same on every device |
+| Paste button | With an empty box the button reads "Paste & Fetch": one tap pastes the copied link and fetches it (needs clipboard permission; otherwise long-press the box). With text in the box it reads "Fetch". Same on every device |
 | Fetch a link | Title, thumbnail, author and duration, with video and audio formats to choose from |
 | Video and Audio (MP3) tabs | Each format shows quality, size and codec, with a details dialog. "Best quality" needs no choosing |
 | Audio preview | Built in but off by default (see `VITE_ENABLE_AUDIO_PREVIEW`) |
