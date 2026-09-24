@@ -431,7 +431,7 @@ export async function getBackendHealth(): Promise<BackendHealth> {
   try {
     const res = await fetch(`${API_BASE}/health/ready`, { credentials: "include" });
     const d = await res.json();
-    return { ready: !!d.success, ytdlp: d.checks?.ytdlpVersion ?? null, ffmpeg: !!d.checks?.ffmpeg, database: !!d.checks?.database };
+    return { ready: !!d.success, ytdlp: d.checks?.ytdlp ? "ok" : null, ffmpeg: !!d.checks?.ffmpeg, database: !!d.checks?.database };
   } catch {
     return { ready: false, ytdlp: null, ffmpeg: false, database: false };
   }
