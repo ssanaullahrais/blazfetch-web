@@ -87,3 +87,9 @@ backend's message.
 ## Tests
 
 `pnpm test` runs Vitest against real backend responses (`src/lib/__fixtures__`), covering response mapping, errors, stable paths and the stream download logic.
+
+## License
+
+This project is published for learning and is licensed for educational, non-commercial use only. Public or commercial
+deployment needs the author's written permission, and the footer credit ("Open source on GitHub" and "Developed with ♥ by
+Sanaullah Rais") must stay visible. The build fails if it is removed. See [LICENSE](../LICENSE) and [AGENTS.md](../AGENTS.md).

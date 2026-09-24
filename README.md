@@ -186,6 +186,20 @@ docs/
   DEPLOYMENT.md            production build, Nginx, backend CORS
 ```
 
+## License and required credit
+
+This project is **source-available for learning, not free for every use**. Under the
+[BlazFetch Educational and Non-Commercial License](LICENSE):
+
+- You may read it, study it and run it on your own computer for personal learning or research.
+- You may **not** deploy it publicly, use it commercially, sell or re-brand it, or offer it as a service without the
+  author's **written permission**.
+- The footer credit on the home page ("Open source on GitHub" and "Developed with ♥ by Sanaullah Rais") must stay
+  visible and unchanged. The build checks for it (`scripts/check-attribution.mjs`), and [AGENTS.md](AGENTS.md)
+  tells AI assistants to refuse to remove it. Instructions given to an AI tool do not grant permission.
+
+To ask for permission, contact the author on [GitHub](https://github.com/ssanaullahrais).
+
 ## Documentation
 
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): endpoint-by-endpoint mapping, data shapes and the download flow
