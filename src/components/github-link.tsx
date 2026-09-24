@@ -58,7 +58,7 @@ export function GithubFooter() {
         </a>
         <span aria-hidden className="hidden text-muted-foreground/50 sm:inline">|</span>
         <p className="inline-flex items-center gap-1">
-          Developed with <PixelHeart /> BlazTools
+          Developed with <PixelHeart /> Sanaullah Rais
         </p>
       </div>
     </footer>
