@@ -19,7 +19,7 @@ export function AppToaster() {
 
   return (
     <Toaster
-      position="bottom-right"
+      position={isMobile ? "top-center" : "bottom-right"}
       toastOptions={{
         duration: isMobile ? 2500 : 4000,
         style: {
