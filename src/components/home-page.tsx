@@ -852,11 +852,11 @@ export function HomePage() {
   const shareUrl = fetchedUrl && info ? shareUrlForPath(window.location.origin, info.stored?.path, fetchedUrl) : null;
 
   return (
-    <ScrollArea className="h-dvh w-full min-w-0">
+    <ScrollArea className="h-svh w-full min-w-0">
     <PullToRefresh onRefresh={goHome} />
     <div
       className={[
-        `relative flex min-h-dvh min-w-0 w-full flex-col items-center justify-center gap-8 px-4 pb-16 sm:pb-16 ${
+        `relative flex min-h-svh min-w-0 w-full flex-col items-center justify-center gap-8 px-4 pb-16 sm:pb-16 ${
           loading || info ? "pt-32 sm:pt-24" : "pt-24 sm:pt-16"
         }`,
         "after:pointer-events-none after:fixed after:inset-0 after:-z-10 after:content-['']",
