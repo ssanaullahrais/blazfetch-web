@@ -117,14 +117,14 @@ function BrandMark({ state, progress = 0, className = "size-7" }: { state: Brand
   const reduceMotion = useReducedMotion();
 
   // The icon cycles copy link, paste and download while the app is idle or fetching; during a download it stays on
-  // the download arrow. The tile changes its corner radius with each step.
+  // the download arrow. The tile keeps one fixed size and shape for every icon.
   const [step, setStep] = useState(0);
   useEffect(() => {
     if (state === "downloading" || reduceMotion) return;
     const timer = window.setInterval(() => setStep((n) => (n + 1) % FLOW_STEPS.length), 1800);
     return () => window.clearInterval(timer);
   }, [state, reduceMotion]);
-  const current = state === "downloading" ? { Icon: Download, radius: 6 } : { Icon: FLOW_STEPS[step].Icon, radius: [6, 10, 5][step] };
+  const current = state === "downloading" ? { Icon: Download, radius: 8 } : { Icon: FLOW_STEPS[step].Icon, radius: 8 };
   const Icon = current.Icon;
 
   return (
