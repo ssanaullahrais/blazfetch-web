@@ -21,7 +21,8 @@ server {
     root /var/www/blazfetch;
     index index.html;
 
-    # Single-page app: unknown paths serve index.html
+    # Single-page app: unknown paths serve index.html. This also serves stable
+    # pages such as /youtube/<id>, so keep this fallback
     location / {
         try_files $uri /index.html;
     }
@@ -44,6 +45,9 @@ server {
     }
 }
 ```
+
+Keep `/api` on the same origin as the site: the app detects started and failed downloads through the
+first-party start cookie and the frame's error page, which needs same origin.
 
 Then add HTTPS with `sudo certbot --nginx -d example.com`. With this same-domain setup the backend needs no
 CORS change.

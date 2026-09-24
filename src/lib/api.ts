@@ -1,25 +1,19 @@
-// Client for the Blazfetch backend (see backend/docs/API.md). Relative by
+// Client for the Blazfetch backend (see the backend's docs/API.md). Relative by
 // default: requests go through the Vite dev proxy locally (vite.config.ts)
 // and a single reverse proxy in production. Set VITE_API_BASE only when the
 // API lives on a different origin (the backend's CORS_ALLOWED_ORIGINS must
 // then include this site).
 import { coerceMediaUrl } from "@/lib/media-url";
+import { ApiError, apiErrorFromBody } from "@/lib/errors";
+
+export { ApiError, friendlyError, friendlyErrorFor, errorTitleFor, firstSentence, getTombstone } from "@/lib/errors";
+export type { Tombstone } from "@/lib/errors";
 
 export const API_BASE = import.meta.env.VITE_API_BASE || "";
-const API = `${API_BASE}/api/v1`;
+export const API = `${API_BASE}/api/v1`;
 
-/** A backend error envelope: { success: false, error: { code, message } }. */
-export class ApiError extends Error {
-  code: string;
-  status: number;
-  constructor(code: string, message: string, status = 0) {
-    super(message);
-    this.code = code;
-    this.status = status;
-  }
-}
-
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** JSON request to the backend: sends the guest cookie and turns error envelopes into ApiError. */
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API}${path}`, {
@@ -31,9 +25,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError("NETWORK_ERROR", "Failed to fetch");
   }
   const data = await res.json().catch(() => null);
-  if (!res.ok || data?.success === false) {
-    throw new ApiError(data?.error?.code ?? "UNKNOWN", data?.error?.message ?? "Request failed.", res.status);
-  }
+  if (!res.ok || data?.success === false) throw apiErrorFromBody(data, res.status);
   return data as T;
 }
 
@@ -76,27 +68,60 @@ type ApiItem = {
   formats?: ApiFormat[];
 };
 
+/** What the backend knows about a stored item: its stable path, freshness and usage statistics. */
+export type ApiStored = {
+  path: string;
+  /** For a YouTube link with both `v=` and `list=`: the playlist in that video's context. */
+  playlistPath?: string;
+  sourceUrl: string;
+  status: "available" | "unavailable";
+  /** Answered from the database without extracting from the source. */
+  cached: boolean;
+  urlsStale: boolean;
+  /** A live check failed without proving the media gone, so the last known answer is shown. */
+  validationFailed?: boolean;
+  firstFetchedAt: string;
+  lastFetchedAt: string;
+  validatedAt: string | null;
+  nextCheckAt: string | null;
+  stats: {
+    fetchCount: number;
+    hitCount: number;
+    viewCount: number;
+    downloadCount: number;
+    streamCount: number;
+    prepareCount: number;
+    bytesServed: number;
+    lastAccessedAt: string | null;
+    lastDownloadedAt: string | null;
+  };
+};
+
 type ApiFetchResponse = {
   platform: string;
   mediaType: "video" | "audio" | "image" | "carousel" | "playlist";
   mediaId: string;
   canonicalUrl: string;
   title?: string;
+  description?: string;
   author?: { name?: string; url?: string };
   thumbnail?: string;
   durationSeconds?: number | null;
+  uploadDate?: string;
   items?: ApiItem[];
   formats: ApiFormat[];
   audioFormats: ApiAudioFormat[];
   playlist?: {
     title?: string;
+    channel?: string;
     items: { videoId: string; title: string; thumbnail?: string; durationSeconds?: number; url: string }[];
   };
   extractor: string;
+  /** Set when a fallback provider (not yt-dlp) produced the answer, e.g. while YouTube blocks the server. */
+  fallbackUsed?: string;
   metadata?: Record<string, unknown>;
+  stored?: ApiStored;
 };
-
-type ApiAudioResponse = { audioFormats: ApiAudioFormat[] };
 
 export type Platform = { id: string; label: string; domains: string[] };
 
@@ -141,10 +166,26 @@ export type CarouselVideoItem = {
   thumbnail: string | null;
   duration: number | null;
   uploader: string | null;
-  /** formatId to pass to POST /download together with the post URL. */
+  /** formatId to pass to GET /stream together with the post URL. */
   formatId: string;
   ext: string;
   filesize: number | null;
+};
+
+/** Facts about the stored copy that the UI shows or links to. */
+export type StoredSummary = {
+  /** Stable page path for this media, e.g. "/youtube/dQw4w9WgXcQ". */
+  path: string;
+  /** For a video link that also carried a playlist: the playlist page path. */
+  playlistPath: string | null;
+  /** Answered from the database instantly (not freshly extracted). */
+  cached: boolean;
+  /** The last live check failed without proving the media gone, so this may be out of date. */
+  validationFailed: boolean;
+  downloads: number;
+  views: number;
+  firstFetchedAt: string;
+  lastFetchedAt: string;
 };
 
 export type MediaInfo = {
@@ -160,12 +201,17 @@ export type MediaInfo = {
   audioFormats: MediaFormat[];
   /** "video" (default when absent) | "playlist" | "images" | "carousel" */
   type?: "video" | "playlist" | "images" | "carousel";
+  /** Audio only (e.g. a SoundCloud track): there is no video to offer. */
+  audioOnly?: boolean;
   entries?: PlaylistEntry[];
   images?: ImageItem[];
   /** "carousel" only: videos from a multi-item post. `images` may hold the photos of a mixed post. */
   carouselVideos?: CarouselVideoItem[];
   /** Large collections (Pinterest boards): which slice is loaded out of the total. */
   range?: { total: number; start: number; end: number; truncated: boolean; max: number };
+  /** Set when a fallback provider answered (lower quality, e.g. YouTube blocking the server). */
+  fallbackUsed?: string | null;
+  stored?: StoredSummary | null;
 };
 
 export type FetchOptions = { forceRefresh?: boolean; rangeStart?: number; rangeEnd?: number };
@@ -179,7 +225,7 @@ function toVideoFormat(f: ApiFormat): MediaFormat {
     fps: f.fps ?? null,
     hasVideo: true,
     hasAudio: f.kind === "video",
-    note: f.compatible === false ? "may need transcoding" : null,
+    note: f.compatible === false ? "may not play everywhere" : null,
     filesize: f.filesizeBytes ?? null,
     filesizeApprox: !!f.filesizeApprox,
     abr: null,
@@ -209,7 +255,7 @@ function toAudioFormat(f: ApiAudioFormat): MediaFormat {
 }
 
 /** Highest resolution first; one row per resolution+container, preferring browser-compatible ones. */
-function dedupeVideoFormats(formats: ApiFormat[]): MediaFormat[] {
+export function dedupeVideoFormats(formats: ApiFormat[]): MediaFormat[] {
   const sorted = [...formats].sort(
     (a, b) => (b.height ?? 0) - (a.height ?? 0) || Number(b.compatible) - Number(a.compatible) || (b.fps ?? 0) - (a.fps ?? 0)
   );
@@ -224,33 +270,34 @@ function dedupeVideoFormats(formats: ApiFormat[]): MediaFormat[] {
   return out;
 }
 
-/** Audio options come from POST /fetch/audio (it adds the MP3-conversion option when a source has no audio track). */
-async function fetchAudioFormats(url: string): Promise<ApiAudioFormat[] | null> {
-  try {
-    const data = await request<ApiAudioResponse>("/fetch/audio", { method: "POST", body: JSON.stringify({ url }) });
-    return data.audioFormats;
-  } catch {
-    return null;
-  }
+function toStoredSummary(stored: ApiStored | undefined): StoredSummary | null {
+  if (!stored) return null;
+  return {
+    path: stored.path,
+    playlistPath: stored.playlistPath ?? null,
+    cached: stored.cached,
+    validationFailed: !!stored.validationFailed,
+    downloads: stored.stats?.downloadCount ?? 0,
+    views: stored.stats?.viewCount ?? 0,
+    firstFetchedAt: stored.firstFetchedAt,
+    lastFetchedAt: stored.lastFetchedAt,
+  };
 }
 
-export async function fetchInfo(url: string, options: FetchOptions = {}): Promise<MediaInfo> {
-  const cleanUrl = coerceMediaUrl(url);
-  const data = await request<ApiFetchResponse>("/fetch", {
-    method: "POST",
-    body: JSON.stringify({ url: cleanUrl, ...options }),
-  });
-
+/** Turns any backend fetch/media response into the model the UI renders. */
+export function toMediaInfo(data: ApiFetchResponse): MediaInfo {
   const base = {
     id: data.mediaId ?? null,
     title: data.title ?? data.playlist?.title ?? "Untitled",
     thumbnail: data.thumbnail ?? null,
     duration: data.durationSeconds ?? null,
-    uploader: data.author?.name ?? null,
+    uploader: data.author?.name ?? data.playlist?.channel ?? null,
     extractor: data.platform,
     webpage_url: data.canonicalUrl,
     videoFormats: [] as MediaFormat[],
     audioFormats: [] as MediaFormat[],
+    fallbackUsed: data.fallbackUsed ?? null,
+    stored: toStoredSummary(data.stored),
   };
 
   if (data.mediaType === "playlist" && data.playlist) {
@@ -313,14 +360,56 @@ export async function fetchInfo(url: string, options: FetchOptions = {}): Promis
   }
 
   const videoFormats = dedupeVideoFormats(data.formats);
-  const rawAudio = (await fetchAudioFormats(cleanUrl)) ?? data.audioFormats;
+  const rawAudio = data.audioFormats ?? [];
   // Drop HLS/manifest entries (no bitrate) and DRC variants, best bitrate first;
   // keep converted (MP3-from-video) options as they are.
   const usableAudio = rawAudio.filter((f) => f.isConverted || (f.bitrate && !/drc/i.test(f.quality ?? f.formatId)));
   const audioFormats = (usableAudio.length ? usableAudio : rawAudio)
     .sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0))
     .map(toAudioFormat);
-  return { ...base, type: "video", videoFormats, audioFormats };
+  return { ...base, type: "video", videoFormats, audioFormats, audioOnly: videoFormats.length === 0 && audioFormats.length > 0 };
+}
+
+/** POST /fetch/audio: the audio options for a link, including the "converted to MP3" option ffmpeg can produce. */
+async function fetchAudioFormats(url: string): Promise<ApiAudioFormat[] | null> {
+  try {
+    const data = await request<{ audioFormats: ApiAudioFormat[] }>("/fetch/audio", { method: "POST", body: JSON.stringify({ url }) });
+    return data.audioFormats;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A video whose source has no separate audio track still has a "Best quality audio" download, but
+ * POST /fetch/audio lists it explicitly (as a `mp3-from-...` option), so ask for it only in that case.
+ */
+async function withAudioOptions(info: MediaInfo, url: string): Promise<MediaInfo> {
+  if (info.type !== "video" || info.audioFormats.length > 0 || info.videoFormats.length === 0) return info;
+  const extra = await fetchAudioFormats(url);
+  if (!extra?.length) return info;
+  return { ...info, audioFormats: [...extra].sort((a, b) => (b.bitrate ?? 0) - (a.bitrate ?? 0)).map(toAudioFormat) };
+}
+
+/** POST /fetch: metadata, thumbnail and every format for a link. Stored by the backend, so repeats are instant. */
+export async function fetchInfo(url: string, options: FetchOptions = {}): Promise<MediaInfo> {
+  const cleanUrl = coerceMediaUrl(url);
+  const data = await request<ApiFetchResponse>("/fetch", {
+    method: "POST",
+    body: JSON.stringify({ url: cleanUrl, ...options }),
+  });
+  return withAudioOptions(toMediaInfo(data), cleanUrl);
+}
+
+/**
+ * GET /media/<platform>/<id>: opens media by its stable page path (`/youtube/dQw4w9WgXcQ`). Stored media
+ * answers from the database; media the server has never seen is fetched for you when its link can be
+ * rebuilt from the id. A deleted video answers 410 MEDIA_UNAVAILABLE (see getTombstone).
+ */
+export async function getStoredMedia(path: string): Promise<MediaInfo> {
+  const data = await request<ApiFetchResponse>(`/media${path}`);
+  const info = toMediaInfo(data);
+  return withAudioOptions(info, info.webpage_url);
 }
 
 let platformsPromise: Promise<Platform[]> | null = null;
@@ -346,82 +435,6 @@ export async function getBackendHealth(): Promise<BackendHealth> {
   } catch {
     return { ready: false, ytdlp: null, ffmpeg: false, database: false };
   }
-}
-
-// ---- Download jobs -----------------------------------------------------------
-
-/** UI-level job states. The backend's preparing/streaming map to "running",
- * ready/completed to "ready" (the file can be fetched), failed to "error". */
-export type DownloadJobState = "queued" | "running" | "ready" | "error" | "cancelled";
-
-export type DownloadJobStatus = {
-  id: string;
-  status: DownloadJobState;
-  progress: number;
-  filename: string | null;
-  error: string | null;
-};
-
-type ApiJob = {
-  id: string;
-  status: "queued" | "preparing" | "ready" | "streaming" | "completed" | "failed" | "cancelled" | "expired";
-  progress?: number;
-  filename?: string | null;
-  errorCode?: string | null;
-  errorMessage?: string | null;
-};
-
-function toJobStatus(job: ApiJob): DownloadJobStatus {
-  const status: DownloadJobState =
-    job.status === "queued"
-      ? "queued"
-      : job.status === "preparing" || job.status === "streaming"
-        ? "running"
-        : job.status === "ready" || job.status === "completed"
-          ? "ready"
-          : job.status === "failed"
-            ? "error"
-            : "cancelled";
-  return {
-    id: job.id,
-    status,
-    progress: job.progress ?? 0,
-    filename: job.filename ?? null,
-    error: job.errorMessage ?? null,
-  };
-}
-
-/** Starts a background job. `formatId` defaults to "best" on the backend. */
-export async function startDownloadJob(params: { url: string; formatId?: string; kind: "video" | "audio"; quality?: string }) {
-  const data = await request<{ job: ApiJob }>("/download", {
-    method: "POST",
-    body: JSON.stringify({
-      url: coerceMediaUrl(params.url),
-      formatId: params.formatId,
-      kind: params.kind,
-      quality: params.quality,
-    }),
-  });
-  return toJobStatus(data.job);
-}
-
-export async function getDownloadJob(jobId: string) {
-  const data = await request<{ job: ApiJob }>(`/jobs/${encodeURIComponent(jobId)}`);
-  return toJobStatus(data.job);
-}
-
-/** Cancels the job, stops any running yt-dlp/ffmpeg process and removes its temp files. */
-export async function cancelDownloadJob(jobId: string) {
-  await request(`/downloads/${encodeURIComponent(jobId)}`, { method: "DELETE" });
-}
-
-/** Streams the finished file (one-shot: the backend removes its temp copy afterwards). */
-export function requestDownloadJobFile(jobId: string) {
-  return fetch(downloadJobFileUrl(jobId), { credentials: "include", cache: "no-store" });
-}
-
-export function downloadJobFileUrl(jobId: string) {
-  return `${API}/downloads/${encodeURIComponent(jobId)}`;
 }
 
 export function getDownloadFilename(contentDisposition: string | null, fallback: string) {
@@ -551,49 +564,6 @@ export function platformSlug(sourceUrl?: string | null): string {
   } catch {
     return "watch";
   }
-}
-
-export function friendlyError(rawMessage: string, _sourceUrl?: string | null): string {
-  void _sourceUrl;
-  const msg = rawMessage.toLowerCase();
-  if (msg.includes("private") || msg.includes("login required")) {
-    return "This video is private or requires login — it can't be downloaded.";
-  }
-  if (msg.includes("unsupported url") || msg.includes("no extractor")) {
-    return "This link isn't from a supported site.";
-  }
-  if (msg.includes("404") || msg.includes("not found")) {
-    return "That video couldn't be found. It may have been removed.";
-  }
-  if (msg.includes("timed out") || msg.includes("timeout")) {
-    return "The request took too long. Please try again.";
-  }
-  if (msg.includes("failed to fetch") || msg.includes("networkerror") || msg.includes("network error") || msg.includes("load failed")) {
-    return "The download service could not be reached. Check your connection and try again.";
-  }
-  if (msg.includes("geo") || msg.includes("not available in your country")) {
-    return "This video isn't available in this region.";
-  }
-  return cleanRawError(rawMessage) || "Something went wrong. Please try again.";
-}
-
-/** Strips yt-dlp's "ERROR: [extractor] id: " prefix so the real reason shows through. */
-function cleanRawError(rawMessage: string): string {
-  const cleaned = rawMessage
-    .replace(/^ERROR:\s*/i, "")
-    .replace(/^\[[^\]]+\]\s*[\w-]+:\s*/, "")
-    .trim();
-  return firstSentence(cleaned);
-}
-
-/** Keeps only the first sentence of a message (up to the first ". "), dropping trailing links/instructions. */
-export function firstSentence(message: string): string {
-  const cleaned = message.trim();
-  if (!cleaned) return "";
-  const match = cleaned.match(/^[^.!?]*[.!?]/);
-  const sentence = (match ? match[0] : cleaned).trim();
-  const maxLen = 160;
-  return sentence.length > maxLen ? `${sentence.slice(0, maxLen - 1).trimEnd()}…` : sentence;
 }
 
 export function buildFileName(title: string, ext: string, maxLen = 32) {

@@ -10,7 +10,9 @@ for the full request and response shapes.
 |---|---|---|
 | `POST /fetch` | Resolve a link: metadata, formats, carousels, playlists, boards. Sends `forceRefresh` (Refresh button) and `rangeStart` / `rangeEnd` (range picker) | `fetchInfo()` |
 | `POST /fetch/audio` | Audio options, including the MP3-conversion option | `fetchInfo()` (called together with `/fetch` for video sources) |
-| `POST /download` | Start a download job for a video, audio or carousel video | `startDownloadJob()` |
+| `GET /media/<platform>/<id>` (and `/playlist/<id>`) | Open a stored page by its stable path, no re-extraction. 410 `MEDIA_UNAVAILABLE` carries a tombstone | `getStoredMedia()` |
+| `GET /stream?url&kind&formatId&filename&mode&token` | One-request download (default for Download). `mode` is `auto`, `stream` or `prepare` | `startBrowserDownload()`, `fetchStreamBlob()` |
+| `POST /download` | Job flow, used by the "With progress bar" method | `startDownloadJob()` |
 | `GET /jobs/:id` | Poll status and progress every second | `getDownloadJob()`, `waitForDownloadJob()` |
 | `GET /downloads/:id` | The file itself (browser download, or audio preview) | `downloadJobFileUrl()`, `requestDownloadJobFile()` |
 | `DELETE /downloads/:id` | Stop: cancels the job, ends yt-dlp/ffmpeg and removes temp files | `cancelDownloadJob()` |
@@ -18,6 +20,15 @@ for the full request and response shapes.
 | `GET /health/ready` | Status button | `getBackendHealth()` |
 
 ## Download flow
+
+Default (`GET /stream`): the app navigates a hidden frame to the stream URL with a random `token`, so the browser
+download manager takes over and nothing is buffered in memory. The backend sets the cookie
+`blazfetch_dl_<token>` once bytes flow; the app polls for it to show "Started". If the frame instead shows a JSON
+error, the app reads it and shows the friendly message. Stop removes the frame, which ends the server's processes.
+The delivery mode comes from Settings (`auto`, `stream`, `prepare`). Audio previews use `fetch` and a blob.
+If the API is on another origin the frame cannot be observed, so the app falls back to plain navigation.
+
+Progress-bar method (`POST /download`):
 
 1. The user clicks Download on a format row. The frontend calls `POST /download` with `{ url, formatId, kind }`
    (`formatId` is omitted for "Best quality", which the backend resolves).
@@ -36,7 +47,7 @@ Job states are mapped in `toJobStatus()`:
 | `failed` | error (shows `errorMessage`) |
 | `cancelled`, `expired` | cancelled |
 
-The file is served once. The backend removes its temporary copy after it is sent, so a finished job cannot be
+The job file is served once. The backend removes its temporary copy after it is sent, so a finished job cannot be
 downloaded a second time.
 
 ## How responses are mapped to the UI
@@ -48,7 +59,8 @@ downloaded a second time.
 - **No audio track at the source:** the `/fetch/audio` result contains a synthetic `mp3-from-<formatId>` option,
   which the backend converts with ffmpeg.
 - **Playlist:** `playlist.items[]` become a list; opening an entry fetches that video.
-- **Carousel / Pinterest board:** `items[]` are split into videos (downloaded through `/download` with the post URL
+- **Stored info:** `stored` gives the stable `path`, `playlistPath`, `cached`, `validationFailed` and `stats`; `fallbackUsed` names the YouTube fallback provider when it served the result.
+- **Carousel / Pinterest board:** `items[]` are split into videos (downloaded through `/stream` in `prepare` mode with the post URL
   and the item's own `formatId`) and images (saved from `items[].source` directly, because the backend does not
   proxy images). Board responses include `metadata.totalPinCount`, which drives the range picker.
 - **Platform id:** the backend reports X as `twitter`; the logo set keys it as `x`, and both resolve to the X logo.
@@ -56,11 +68,11 @@ downloaded a second time.
 ## Errors
 
 The backend always returns `{ success: false, error: { code, message } }`. `request()` in `api.ts` throws an
-`ApiError` with `code`, `message` and HTTP `status`. `friendlyError()` shortens common messages for toasts;
-`UNSUPPORTED_PLATFORM` is shown as "Not supported". Codes: `UNSUPPORTED_PLATFORM`, `INVALID_URL`, `MEDIA_NOT_FOUND`,
+`ApiError` with `code`, `message` and HTTP `status`. `friendlyErrorFor()` turns codes into plain wording for toasts. Codes: `UNSUPPORTED_PLATFORM`, `INVALID_URL`, `MEDIA_NOT_FOUND`,
 `PRIVATE_MEDIA`, `LOGIN_REQUIRED`, `AGE_RESTRICTED`, `GEO_RESTRICTED`, `EXTRACTOR_FAILED`, `PLATFORM_RATE_LIMITED`,
 `DOWNLOAD_FAILED`, `FORMAT_UNAVAILABLE`, `PROCESS_TIMEOUT`, `FILE_TOO_LARGE`, `SERVER_BUSY`, `VALIDATION_ERROR`,
-`JOB_NOT_FOUND`.
+`JOB_NOT_FOUND`, `MEDIA_UNAVAILABLE` (410, removed media, with `details.tombstone`). Mapping lives in
+`src/lib/errors.ts`.
 
 Rate limits are per guest cookie: 30 fetches and 10 downloads per minute by default. Going over shows the
 backend's message.
@@ -70,3 +82,7 @@ backend's message.
 - Accounts, login, dashboards and usage plans. The backend runs everyone as a guest.
 - A download history. The backend does not store per-user lists.
 - The filename-style preference no longer changes saved names: the backend chooses the filename.
+
+## Tests
+
+`pnpm test` runs Vitest against real backend responses (`src/lib/__fixtures__`), covering response mapping, errors, stable paths and the stream download logic.

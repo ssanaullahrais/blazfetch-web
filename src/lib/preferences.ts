@@ -1,5 +1,9 @@
 import { useSyncExternalStore } from "react";
 import type { FilenameStyle } from "./api";
+import type { DeliveryMode } from "./stream-download";
+
+/** The three stream modes, plus "progress": the job flow with a real progress bar. */
+export type DownloadMethod = DeliveryMode | "progress";
 
 export type Preferences = {
   defaultMode: "video" | "audio";
@@ -9,6 +13,8 @@ export type Preferences = {
   soundEnabled: boolean;
   filenameStyle: FilenameStyle;
   disableMetadata: boolean;
+  /** How the backend delivers a download: auto (stream, then prepare if needed), stream only, or prepare (H.264/AAC). */
+  deliveryMode: DownloadMethod;
 };
 
 // Defaults for a fresh visitor; anything they change is stored as an override.
@@ -20,6 +26,7 @@ const HARDCODED_DEFAULTS: Preferences = {
   soundEnabled: true,
   filenameStyle: "basic",
   disableMetadata: false,
+  deliveryMode: "auto",
 };
 
 const STORAGE_KEY = "media-downloader:preferences";
@@ -48,7 +55,7 @@ function loadOverrides(): Partial<Preferences> {
   }
 }
 
-let serverDefaults: Preferences = HARDCODED_DEFAULTS;
+const serverDefaults: Preferences = HARDCODED_DEFAULTS;
 let overrides: Partial<Preferences> = loadOverrides();
 let state: Preferences = { ...serverDefaults, ...overrides };
 const listeners = new Set<() => void>();

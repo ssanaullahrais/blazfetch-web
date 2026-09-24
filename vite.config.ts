@@ -22,7 +22,7 @@ export default defineConfig({
       // on a phone instead of showing a blank white screen while it
       // refetches its own JS bundle on a slow connection.
       workbox: {
-        navigateFallbackDenylist: [/^\/api\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/health/],
         globPatterns: ["**/*.{js,css,html,woff2,png,svg,ico}"],
       },
       includeAssets: ["favicon-32.png", "apple-touch-icon.png"],
