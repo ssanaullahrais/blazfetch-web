@@ -34,7 +34,7 @@ export function FlowIcon({ className }: { className?: string }) {
       role="img"
       aria-label={label}
     >
-      <Icon className="size-[62%]" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round" />
+      <Icon className="size-[62%]" strokeWidth={1.1} strokeLinecap="round" strokeLinejoin="round" />
     </motion.span>
   );
 }

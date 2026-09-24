@@ -962,7 +962,7 @@ export function HomePage() {
           </button>
         </h1>
         <p className="mx-auto max-w-[240px] text-center text-sm text-muted-foreground sm:max-w-none">
-          Paste any video link and grab it as MP4 or MP3.
+          Paste any social media link and save its videos, audio or photos.
         </p>
       </motion.div>
 
