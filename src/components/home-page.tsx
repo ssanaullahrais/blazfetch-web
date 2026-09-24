@@ -72,7 +72,7 @@ import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { SettingsMenu } from "@/components/settings-menu";
-import { BrandBolt } from "@/components/brand-bolt";
+import { FlowIcon } from "@/components/flow-icon";
 import { GithubFooter } from "@/components/github-link";
 import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
@@ -957,7 +957,7 @@ export function HomePage() {
             onClick={goHome}
             className="inline-flex items-center gap-2.5 rounded-full text-3xl font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:text-4xl"
           >
-            <BrandBolt className="size-8 sm:size-10" />
+            <FlowIcon className="size-8 sm:size-9" />
             BlazFetch
           </button>
         </h1>
