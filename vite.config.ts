@@ -29,7 +29,7 @@ export default defineConfig({
       manifest: {
         name: "BlazFetch",
         short_name: "BlazFetch",
-        description: "Paste any video link and grab it as MP4 or MP3.",
+        description: "Paste any social media link and save its videos, audio or photos.",
         start_url: "/",
         display: "standalone",
         background_color: "#0f172a",
