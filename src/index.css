@@ -221,6 +221,12 @@
   [data-sonner-toast][data-styled="true"] [data-description] {
     color: var(--muted-foreground) !important;
   }
+  /* The icons are a coloured disc with the symbol cut out of it, so a stroke would fill the symbol in.
+     The light chip behind the disc shows through the cut-out and keeps the symbol visible. */
+  [data-sonner-toast][data-styled="true"] [data-icon] {
+    background: color-mix(in oklab, currentColor 14%, var(--popover)) !important;
+    border-radius: 9999px !important;
+  }
   [data-sonner-toast][data-type="success"] [data-icon],
   [data-sonner-toast][data-type="success"] [data-icon] svg,
   [data-sonner-toast][data-type="success"] [data-title] {
@@ -228,7 +234,7 @@
   }
   [data-sonner-toast][data-type="success"] [data-icon] svg {
     fill: var(--toast-success) !important;
-    stroke: var(--toast-success) !important;
+    stroke: none !important;
   }
   [data-sonner-toast][data-type="warning"] [data-icon],
   [data-sonner-toast][data-type="warning"] [data-icon] svg,
@@ -237,7 +243,7 @@
   }
   [data-sonner-toast][data-type="warning"] [data-icon] svg {
     fill: var(--toast-warning) !important;
-    stroke: var(--toast-warning) !important;
+    stroke: none !important;
   }
   [data-sonner-toast][data-type="error"] [data-icon],
   [data-sonner-toast][data-type="error"] [data-icon] svg,
@@ -246,7 +252,7 @@
   }
   [data-sonner-toast][data-type="error"] [data-icon] svg {
     fill: var(--destructive) !important;
-    stroke: var(--destructive) !important;
+    stroke: none !important;
   }
   [data-sonner-toast][data-type="info"] [data-icon],
   [data-sonner-toast][data-type="info"] [data-icon] svg,
@@ -259,7 +265,7 @@
   [data-sonner-toast][data-type="info"] [data-icon] svg,
   [data-sonner-toast][data-type="loading"] [data-icon] svg {
     fill: var(--toast-info) !important;
-    stroke: var(--toast-info) !important;
+    stroke: none !important;
   }
 }
 
