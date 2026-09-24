@@ -14,7 +14,7 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8)
 ![Tests](https://img.shields.io/badge/tests-58%20passing-2EA44F)
 
-[Backend repository](https://github.com/ssanaullahrais/blazfetch-social-downloader) ·
+[Backend repository](https://github.com/ssanaullahrais/blazfetch-api) ·
 [Integration guide](docs/INTEGRATION.md) ·
 [Deployment guide](docs/DEPLOYMENT.md)
 
@@ -24,7 +24,7 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 
 > [!IMPORTANT]
 > **This repository is the frontend only and needs the backend to work.**
-> Get it here: **[ssanaullahrais/blazfetch-social-downloader](https://github.com/ssanaullahrais/blazfetch-social-downloader)**.
+> Get it here: **[ssanaullahrais/blazfetch-api](https://github.com/ssanaullahrais/blazfetch-api)**.
 > Its README covers installing the system tools, choosing a database (SQLite, PostgreSQL, MySQL or MongoDB),
 > platform support and the full API reference.
 
@@ -40,7 +40,7 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 ## Platform status
 
 Every platform was tested with real downloads against the backend. The backend's
-[API docs](https://github.com/ssanaullahrais/blazfetch-social-downloader/blob/master/docs/API.md#responses-by-platform)
+[API docs](https://github.com/ssanaullahrais/blazfetch-api/blob/master/docs/API.md#responses-by-platform)
 show a real response for each one.
 
 | Platform | Status | Notes |
@@ -69,11 +69,11 @@ button at the top right shows whether the backend is up.
 
 ## Quick start
 
-**1. Start the backend** (see [its README](https://github.com/ssanaullahrais/blazfetch-social-downloader)):
+**1. Start the backend** (see [its README](https://github.com/ssanaullahrais/blazfetch-api)):
 
 ```bash
-git clone https://github.com/ssanaullahrais/blazfetch-social-downloader.git
-cd blazfetch-social-downloader
+git clone https://github.com/ssanaullahrais/blazfetch-api.git
+cd blazfetch-api
 # follow the Install section of its README, then:
 npm run dev            # http://localhost:4000
 ```
@@ -81,8 +81,8 @@ npm run dev            # http://localhost:4000
 **2. Start the frontend** (Node.js 20+ and [pnpm](https://pnpm.io) 10+):
 
 ```bash
-git clone https://github.com/ssanaullahrais/blazfetch-social-downloader-frontend.git
-cd blazfetch-social-downloader-frontend
+git clone https://github.com/ssanaullahrais/blazfetch-web.git
+cd blazfetch-web
 pnpm install
 pnpm dev               # http://localhost:3000
 ```
@@ -175,8 +175,8 @@ docs/
 
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): endpoint-by-endpoint mapping, data shapes and the download flow
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): building and serving with Nginx
-- [Backend README](https://github.com/ssanaullahrais/blazfetch-social-downloader): backend setup and databases
-- [Backend API reference](https://github.com/ssanaullahrais/blazfetch-social-downloader/blob/master/docs/API.md) and its OpenAPI file
+- [Backend README](https://github.com/ssanaullahrais/blazfetch-api): backend setup and databases
+- [Backend API reference](https://github.com/ssanaullahrais/blazfetch-api/blob/master/docs/API.md) and its OpenAPI file
 
 ## Troubleshooting
 
@@ -191,5 +191,5 @@ docs/
 ---
 
 <div align="center">
-Backend: <a href="https://github.com/ssanaullahrais/blazfetch-social-downloader">blazfetch-social-downloader</a>
+Backend: <a href="https://github.com/ssanaullahrais/blazfetch-api">blazfetch-api</a>
 </div>
