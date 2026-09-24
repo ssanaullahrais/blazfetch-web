@@ -1,6 +1,6 @@
 # Deployment
 
-The frontend builds to static files. Deploy the backend first, see the
+Deploy the backend first: see the
 [backend repository](https://github.com/ssanaullahrais/blazfetch-social-downloader) and its VPS guide.
 
 The frontend builds to static files. Serve them with Nginx and route `/api` and `/health` to the backend
