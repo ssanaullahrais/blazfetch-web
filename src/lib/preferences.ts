@@ -29,6 +29,15 @@ const HARDCODED_DEFAULTS: Preferences = {
   deliveryMode: "auto",
 };
 
+/** Fastest, Compatible MP4 and With progress bar are switched off for now: downloads always use Automatic.
+ * Build with VITE_ENABLE_DOWNLOAD_METHODS=true to let visitors choose. */
+export const DOWNLOAD_METHODS_SELECTABLE = import.meta.env.VITE_ENABLE_DOWNLOAD_METHODS === "true";
+
+/** Applies the rule above to the merged preferences. */
+function withMethodRule(prefs: Preferences): Preferences {
+  return DOWNLOAD_METHODS_SELECTABLE ? prefs : { ...prefs, deliveryMode: "auto" };
+}
+
 const STORAGE_KEY = "media-downloader:preferences";
 
 /** Only the fields this visitor has explicitly changed — never the full
@@ -57,11 +66,11 @@ function loadOverrides(): Partial<Preferences> {
 
 const serverDefaults: Preferences = HARDCODED_DEFAULTS;
 let overrides: Partial<Preferences> = loadOverrides();
-let state: Preferences = { ...serverDefaults, ...overrides };
+let state: Preferences = withMethodRule({ ...serverDefaults, ...overrides });
 const listeners = new Set<() => void>();
 
 function recompute() {
-  state = { ...serverDefaults, ...overrides };
+  state = withMethodRule({ ...serverDefaults, ...overrides });
   listeners.forEach((l) => l());
 }
 

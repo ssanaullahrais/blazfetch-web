@@ -23,7 +23,7 @@ It stores nothing on its own server: it is static files.
 | Playlists | YouTube playlists list every video; open one to fetch its formats |
 | Carousels and galleries | Instagram carousels and Pinterest pins/boards: videos and images in separate tabs |
 | Large boards | Pinterest board range picker (`rangeStart` / `rangeEnd`) |
-| Download methods | Settings menu: Automatic (default), Fastest (direct stream), Compatible MP4 (H.264/AAC), or With progress bar (job flow). Downloads go straight to the browser's download manager, nothing is held in memory |
+| Download methods | Automatic is always used for now. The other methods are built in (Fastest direct stream, Compatible MP4 H.264/AAC, With progress bar job flow) and shown as "Soon" in Settings; build with `VITE_ENABLE_DOWNLOAD_METHODS=true` to let visitors choose them. Downloads go straight to the browser's download manager, nothing is held in memory |
 | Stop | Cancels the download and the backend cleans up its processes |
 | Refresh | Re-fetches a link and skips the backend's metadata cache (`forceRefresh`) |
 | Stable pages | Every fetched item gets a permanent path such as `/youtube/dQw4w9WgXcQ`. It is put in the address bar, can be shared and opens instantly from the backend's media store |
@@ -56,6 +56,7 @@ default `CORS_ALLOWED_ORIGINS` is `http://localhost:3000`, which matches this de
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks the Fastest, Compatible MP4 and With progress bar download methods in Settings |
 | `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
 
 The proxy target for `pnpm dev` and `pnpm preview` is in [vite.config.ts](vite.config.ts).

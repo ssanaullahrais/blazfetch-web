@@ -1,7 +1,7 @@
 import { Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { usePreferences, type Preferences } from "@/lib/preferences";
+import { DOWNLOAD_METHODS_SELECTABLE, usePreferences, type Preferences } from "@/lib/preferences";
 import type { DownloadMethod } from "@/lib/preferences";
 
 const METHODS: { value: DownloadMethod; title: string; description: string }[] = [
@@ -69,15 +69,17 @@ export function SettingsMenu() {
         <div role="radiogroup" aria-label="Download method" className="flex flex-col">
           {METHODS.map((method) => {
             const selected = prefs.deliveryMode === method.value;
+            const locked = !DOWNLOAD_METHODS_SELECTABLE && method.value !== "auto";
             return (
               <button
                 key={method.value}
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                title={method.description}
+                title={locked ? "Not available yet" : method.description}
+                disabled={locked}
                 onClick={() => set("deliveryMode")(method.value)}
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted"
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
               >
                 <span
                   className={`size-3.5 shrink-0 rounded-full border ${
@@ -85,6 +87,7 @@ export function SettingsMenu() {
                   }`}
                 />
                 {method.title}
+                {locked && <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground">Soon</span>}
               </button>
             );
           })}
