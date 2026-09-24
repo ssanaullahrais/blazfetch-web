@@ -85,3 +85,9 @@ visitors get the new version on their next load.
 | Downloads cut off or hang | `proxy_buffering off` and a long `proxy_read_timeout` on `/api/`. |
 | A fix on the backend does not show for a link you already fetched | Results are stored. Click **Refresh** on the result once. |
 | Video plays black on a phone | Backend issue, fixed by updating it and using `DEFAULT_DOWNLOAD_MODE=auto`. See the backend's VPS guide. |
+
+## License
+
+This project is published for learning and is licensed for educational, non-commercial use only. Public or commercial
+deployment needs the author's written permission, and the footer credit ("Open source on GitHub" and "Developed with ♥ by
+Sanaullah Rais") must stay visible. The build fails if it is removed. See [LICENSE](../LICENSE) and [AGENTS.md](../AGENTS.md).

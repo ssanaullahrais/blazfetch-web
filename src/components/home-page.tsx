@@ -948,7 +948,7 @@ export function HomePage() {
             onClick={goHome}
             className="inline-flex items-center gap-2.5 rounded-full text-3xl font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:text-4xl"
           >
-            <FlowIcon className="size-9 sm:size-11" />
+            <FlowIcon className="size-8 sm:size-10" />
             BlazFetch
           </button>
         </h1>
