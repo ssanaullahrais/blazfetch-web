@@ -962,7 +962,7 @@ export function HomePage() {
           </button>
         </h1>
         <p className="mx-auto max-w-[240px] text-center text-sm text-muted-foreground sm:max-w-none">
-          Paste any social media link and save its videos, audio or photos.
+          Paste a link, save any video, audio or photo.
         </p>
       </motion.div>
 
