@@ -74,14 +74,19 @@ Turnstile is switched on and off in the **backend's** `.env` (`TURNSTILE_ENABLED
 
 When it is on:
 
-1. [`TurnstileWidget`](../src/components/turnstile-widget.tsx) draws the Cloudflare widget below the platform carousel,
-   where the result card appears. It uses `appearance: "interaction-only"`, so most visitors see nothing and a small
-   checkbox appears only when Cloudflare needs one. The light widget is used on both themes.
-2. The solved token goes to `POST /api/v1/turnstile/verify`; the backend validates it with Cloudflare and sets a signed
-   pass cookie (30 minutes by default). The frontend asks again a minute before it expires.
-3. [`request()`](../src/lib/api.ts) (fetch and download calls), `startBrowserDownload()` and `fetchStreamBlob()` wait for
+1. **Nothing happens on a normal visit.** The check starts only when the visitor fetches or downloads something.
+   Opening the site or a stored page (`/youtube/<id>`) never triggers it.
+2. [`TurnstileWidget`](../src/components/turnstile-widget.tsx) then draws the Cloudflare widget below the platform
+   carousel, where the result card appears, in `interaction-only` mode: most visitors see nothing. If Cloudflare needs a
+   click, or the check takes longer than 6 seconds, the widget is shown in full. The link stays in the search box the
+   whole time. The light widget is used on both themes.
+3. The solved token goes to `POST /api/v1/turnstile/verify`; the backend validates it with Cloudflare and sets a signed
+   pass cookie (30 minutes by default). **Once the check is passed the widget is removed from the page.** When the pass
+   expires, the check waits until the next fetch or download.
+4. If the widget fails (blocked, offline, wrong domain) the visitor sees a message and a **Try again** button.
+5. [`request()`](../src/lib/api.ts) (fetch and download calls), `startBrowserDownload()` and `fetchStreamBlob()` wait for
    the pass first, and retry once if the backend answers `403 TURNSTILE_REQUIRED`. State lives in
-   [`src/lib/turnstile.ts`](../src/lib/turnstile.ts).
+   [`src/lib/turnstile.ts`](../src/lib/turnstile.ts) (`idle`, `needed`, `verifying`, `passed`, `error`, `off`).
 
 Same origin is recommended (see [DEPLOYMENT.md](DEPLOYMENT.md)): the pass is an HttpOnly cookie, and downloads are plain
 browser navigations that carry it. For local testing use Cloudflare's dummy keys (they always pass on localhost):
