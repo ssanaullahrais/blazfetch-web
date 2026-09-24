@@ -5,6 +5,7 @@
 // then include this site).
 import { coerceMediaUrl } from "@/lib/media-url";
 import { ApiError, apiErrorFromBody } from "@/lib/errors";
+import { markPassLost, waitForPass } from "@/lib/turnstile";
 
 export { ApiError, friendlyError, friendlyErrorFor, errorTitleFor, firstSentence, getTombstone } from "@/lib/errors";
 export type { Tombstone } from "@/lib/errors";
@@ -14,6 +15,23 @@ export const API = `${API_BASE}/api/v1`;
 
 /** JSON request to the backend: sends the guest cookie and turns error envelopes into ApiError. */
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // Fetching and downloading sit behind the optional Cloudflare Turnstile check; this waits for it when it is on.
+  const protectedCall = /^\/(fetch|download)(\/|$)/.test(path);
+  if (protectedCall) await waitForPass();
+  try {
+    return await send<T>(path, init);
+  } catch (err) {
+    if (protectedCall && err instanceof ApiError && err.code === "TURNSTILE_REQUIRED") {
+      // The pass lapsed (or was never accepted): run the check again and retry once.
+      markPassLost();
+      await waitForPass();
+      return send<T>(path, init);
+    }
+    throw err;
+  }
+}
+
+async function send<T>(path: string, init: RequestInit): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${API}${path}`, {

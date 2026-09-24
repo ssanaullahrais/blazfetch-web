@@ -74,6 +74,7 @@ import { SettingsMenu } from "@/components/settings-menu";
 import { FLOW_STEPS } from "@/lib/flow-steps";
 import { site } from "@/config/site";
 import { applySeo } from "@/lib/seo";
+import { TurnstileWidget } from "@/components/turnstile-widget";
 import { GithubFooter } from "@/components/github-link";
 import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
@@ -1010,7 +1011,9 @@ export function HomePage() {
         </Button>
       </motion.div>
 
-      <PlatformIcons compact={loading || !!info} />
+      <PlatformIcons compact />
+
+      <TurnstileWidget />
 
       <AnimatePresence mode="wait">
         {loading && (

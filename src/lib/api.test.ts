@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+// These tests count the requests the client makes: keep the optional Turnstile check out of them.
+vi.mock("@/lib/turnstile", () => ({ waitForPass: async () => undefined, markPassLost: () => undefined }))
 import { fallbackTitle, fetchInfo, getStoredMedia, toMediaInfo } from "@/lib/api"
 import { ApiError, getTombstone } from "@/lib/errors"
 import youtube from "@/lib/__fixtures__/youtube.json"

@@ -117,6 +117,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Media store info | Download count, "May be outdated" (revalidation failed) and "Backup source" (fallback provider) badges, playlist page link |
 | Unavailable media | A removed video (HTTP 410) shows a "No longer available" card with the reason and dates |
 | White label and SEO | The site name, tagline, description and URL come from one file (`src/config/site.ts`) or `VITE_SITE_*` variables, and feed the header, tab titles, share text, app name, meta tags, Open Graph, JSON-LD, sitemap and robots. Result pages get their own title, description and preview |
+| Bot check | Optional Cloudflare Turnstile, switched on from the backend's `.env`. The widget sits below the carousel and only becomes visible when Cloudflare needs a click. See [docs/INTEGRATION.md](docs/INTEGRATION.md#cloudflare-turnstile-optional-bot-check) |
 | Legacy share links | `/?url=<link>` still fetches on load |
 | Animated logo | The header logo cycles copy link, paste and download, and shows the fetch and download progress ring around it (still when the device asks for reduced motion) |
 | GitHub links | A quiet "Open source on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
