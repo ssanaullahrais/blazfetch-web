@@ -105,7 +105,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 |---|---|
 | Fetch a link | Title, thumbnail, author and duration, with video and audio formats to choose from |
 | Video and Audio (MP3) tabs | Each format shows quality, size and codec, with a details dialog. "Best quality" needs no choosing |
-| Audio preview | Play a track before downloading it |
+| Audio preview | Built in but off by default (see `VITE_ENABLE_AUDIO_PREVIEW`) |
 | Playlists | YouTube playlists list every video; open one to fetch its formats |
 | Carousels and galleries | Instagram carousels and Pinterest pins and boards: videos and images in separate tabs |
 | Large boards | Pinterest board range picker |
@@ -136,6 +136,7 @@ To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
 | Variable | Default | Purpose |
 |---|---|---|
 | `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
+| `VITE_ENABLE_AUDIO_PREVIEW` | off | `true` shows the play button on audio rows (previews are off because most audio is M4A/WebM) |
 | `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks Fastest, Compatible MP4 and With progress bar in Settings |
 
 The proxy target for `pnpm dev` and `pnpm preview` is in [vite.config.ts](vite.config.ts).

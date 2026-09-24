@@ -77,6 +77,9 @@ import { coerceMediaUrl } from "@/lib/media-url";
 type FormatKey = string;
 
 /** The progress-bar method is job-based; a quick preview always uses the streaming endpoint. */
+/** Turn the audio play buttons back on by setting VITE_ENABLE_AUDIO_PREVIEW=true. */
+const AUDIO_PREVIEW_ENABLED = import.meta.env.VITE_ENABLE_AUDIO_PREVIEW === "true";
+
 function streamModeFor(method: ReturnType<typeof usePreferences>["prefs"]["deliveryMode"]) {
   return method === "progress" ? "auto" : method;
 }
@@ -1647,7 +1650,7 @@ function FormatRow({
   status,
   onDownload,
   playKey,
-  onPlayAudio,
+  onPlayAudio: onPlayAudioRequested,
   previewLoading,
   format,
   thumbnail,
@@ -1695,6 +1698,8 @@ function FormatRow({
   /** Shown on the button once done: "Started" for a download handed to the browser, "Saved" for an image. */
   doneLabel?: string;
 }) {
+  // Audio previews are switched off for now: most audio is M4A/WebM, which is not a plain MP3 to play.
+  const onPlayAudio = AUDIO_PREVIEW_ENABLED ? onPlayAudioRequested : undefined;
   const isDone = status === "downloaded";
   const isPlaying = useIsPlaying(playKey ?? "");
   const { currentTime, duration } = useAudioProgress(playKey ?? "");
