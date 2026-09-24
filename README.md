@@ -117,7 +117,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Media store info | Download count, "May be outdated" (revalidation failed) and "Backup source" (fallback provider) badges, playlist page link |
 | Unavailable media | A removed video (HTTP 410) shows a "No longer available" card with the reason and dates |
 | Legacy share links | `/?url=<link>` still fetches on load |
-| Animated heading icon | An icon beside the title cycles copy link, paste and download (still when the device asks for reduced motion) |
+| Animated logo | The header logo cycles copy link, paste and download, and shows the fetch and download progress ring around it (still when the device asks for reduced motion) |
 | GitHub links | A quiet "Open source on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
 | Pull to refresh | On phones, pull down from the top to show a circular loader; releasing reloads the app on the home screen with an empty link box |
 | Settings | Default tab (video or audio), fetch on paste, sounds |
