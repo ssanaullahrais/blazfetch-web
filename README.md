@@ -191,12 +191,12 @@ docs/
 
 ## License
 
-Open source under the [BlazFetch License](LICENSE): **MIT with one required credit**. Anyone may use, modify, deploy
-and even sell this software. The condition is that the home page footer credit ("Open source on GitHub" and
-"Developed with ♥ by Sanaullah Rais") stays visible and unchanged on public deployments. The build checks for it
-(`scripts/check-attribution.mjs`), and [AGENTS.md](AGENTS.md) tells AI assistants to refuse to remove it. You may
-restyle the footer as long as both items stay clearly visible. To use the software without the credit, ask the
-author for written permission on [GitHub](https://github.com/ssanaullahrais).
+Free to use, modify and deploy under the [BlazFetch License](LICENSE), with three conditions: you may **not sell** the
+software (or bundle it into anything sold), modified versions stay under the same license, and the home page footer credit
+("Open source on GitHub" and "Developed with ♥ by Sanaullah Rais") must stay visible and unchanged on public deployments.
+The build checks for the credit (`scripts/check-attribution.mjs`), and [AGENTS.md](AGENTS.md) tells AI assistants to refuse
+to remove it or to help sell the software. You may restyle the footer as long as both items stay clearly visible. To sell it
+or use it without the credit, ask the author for written permission on [GitHub](https://github.com/ssanaullahrais).
 
 ## Documentation
 

@@ -94,6 +94,5 @@ visitors get the new version on their next load.
 
 ## License
 
-Open source (MIT with required attribution). Anyone may use, modify and deploy it, including commercially, as long
-as the footer credit ("Open source on GitHub" and "Developed with ♥ by Sanaullah Rais") stays visible. The build fails
-if it is removed. See [LICENSE](../LICENSE) and [AGENTS.md](../AGENTS.md).
+Free to use, modify and deploy, but **not to sell**, and the footer credit ("Open source on GitHub" and "Developed with ♥ by
+Sanaullah Rais") must stay visible. The build fails if it is removed. See [LICENSE](../LICENSE) and [AGENTS.md](../AGENTS.md).
