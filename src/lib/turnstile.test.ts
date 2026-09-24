@@ -31,10 +31,17 @@ describe("turnstile", () => {
       .mockResolvedValueOnce(reply({ success: true, enabled: true }));
     const t = await freshModule();
     await t.initTurnstile("/api/v1");
+    let seen = "";
+    const unsubscribe = (() => {
+      const stop = setInterval(() => undefined, 1000);
+      return () => clearInterval(stop);
+    })();
     let released = false;
     const waiting = t.waitForPass().then(() => (released = true));
     await Promise.resolve();
     expect(released).toBe(false);
+    unsubscribe();
+    expect(seen).toBe("");
     await t.submitToken("XXXX.DUMMY.TOKEN.XXXX");
     await waiting;
     expect(released).toBe(true);

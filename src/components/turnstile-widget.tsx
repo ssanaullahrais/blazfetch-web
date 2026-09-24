@@ -4,9 +4,10 @@ import { API } from "@/lib/api";
 import { initTurnstile, loadTurnstileScript, submitToken, useTurnstile } from "@/lib/turnstile";
 
 /**
- * The Cloudflare Turnstile widget, placed below the platform carousel, where the result card appears. It runs by itself in the background (interaction
- * only mode): most visitors never see anything, and a small checkbox appears in this spot only when Cloudflare needs one.
- * It renders nothing at all when the backend has Turnstile turned off.
+ * The Cloudflare Turnstile widget, placed below the platform carousel, where the result card appears. It stays out of
+ * the way on a normal visit and starts only when the visitor fetches or downloads something. It then runs in the
+ * background (interaction only mode): most visitors see nothing, and a small checkbox appears in this spot only when
+ * Cloudflare needs one. It renders nothing when the backend has Turnstile turned off.
  */
 export function TurnstileWidget() {
   const { status, siteKey } = useTurnstile();
@@ -53,7 +54,8 @@ export function TurnstileWidget() {
     [],
   );
 
-  if (status === "off" || status === "unknown") return null;
+  // Nothing is drawn on a normal visit: the check starts only when the visitor fetches or downloads something.
+  if (status === "off" || status === "unknown" || status === "idle") return null;
   return (
     <div className="flex w-full max-w-xl flex-col items-center gap-1.5" aria-live="polite">
       <div ref={container} className="w-full empty:hidden" />

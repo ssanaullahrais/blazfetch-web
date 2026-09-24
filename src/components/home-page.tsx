@@ -1011,7 +1011,7 @@ export function HomePage() {
         </Button>
       </motion.div>
 
-      <PlatformIcons compact />
+      <PlatformIcons compact={loading || !!info} />
 
       <TurnstileWidget />
 
