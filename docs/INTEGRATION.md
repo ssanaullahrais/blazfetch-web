@@ -17,6 +17,7 @@ credentials so the backend's guest cookie (`blazfetch_guest_id`) works. See the
 | `GET /jobs/:id` | Poll status and progress every second | `getDownloadJob()`, `waitForDownloadJob()` |
 | `GET /downloads/:id` | The file itself (browser download, or audio preview) | `downloadJobFileUrl()`, `requestDownloadJobFile()` |
 | `DELETE /downloads/:id` | Stop: cancels the job, ends yt-dlp/ffmpeg and removes temp files | `cancelDownloadJob()` |
+| `GET /stats` | The footer counter: all-time successful fetches and downloads | `getSiteStats()` |
 | `GET /platforms` | Platform list for the logo grid | `getPlatforms()` |
 | `GET /health/ready` | Status button | `getBackendHealth()` |
 
