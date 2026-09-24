@@ -8,22 +8,22 @@ const METHODS: { value: DownloadMethod; title: string; description: string }[] =
   {
     value: "auto",
     title: "Automatic",
-    description: "Starts instantly. If a video can't be streamed, it is prepared on the server for you.",
+    description: "Starts instantly; prepares on the server if streaming isn't possible.",
   },
   {
     value: "stream",
     title: "Fastest",
-    description: "Streams straight through. A few sites can't be streamed and will fail.",
+    description: "Streams straight through. A few sites can't be streamed.",
   },
   {
     value: "prepare",
     title: "Compatible MP4",
-    description: "Prepared on the server as H.264/AAC so it plays on any device. Takes longer to start.",
+    description: "H.264/AAC MP4 that plays anywhere. Slower to start.",
   },
   {
     value: "progress",
     title: "With progress bar",
-    description: "The server prepares the file first and shows real progress, then it downloads. Slower to start.",
+    description: "Shows real progress while the server prepares the file.",
   },
 ];
 
@@ -34,7 +34,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (val
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-3 rounded-xl px-2.5 py-2 text-left text-sm hover:bg-muted"
+      className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted"
     >
       <span>{label}</span>
       <span
@@ -64,53 +64,53 @@ export function SettingsMenu() {
           <Settings2 className="size-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-[min(22rem,calc(100vw-1.5rem))]">
-        <div className="flex flex-col gap-3">
-          <div>
-            <p className="px-2.5 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Download method</p>
-            <div role="radiogroup" aria-label="Download method" className="flex flex-col gap-1">
-              {METHODS.map((method) => {
-                const selected = prefs.deliveryMode === method.value;
-                return (
-                  <button
-                    key={method.value}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    onClick={() => set("deliveryMode")(method.value)}
-                    className={`rounded-xl border px-2.5 py-2 text-left transition ${
-                      selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-transparent hover:bg-muted"
-                    }`}
-                  >
-                    <p className="text-sm font-medium">{method.title}</p>
-                    <p className="text-xs text-muted-foreground">{method.description}</p>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+      <PopoverContent align="end" className="w-64 gap-0 p-2">
+        <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Download method</p>
+        <div role="radiogroup" aria-label="Download method" className="flex flex-col">
+          {METHODS.map((method) => {
+            const selected = prefs.deliveryMode === method.value;
+            return (
+              <button
+                key={method.value}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                title={method.description}
+                onClick={() => set("deliveryMode")(method.value)}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted"
+              >
+                <span
+                  className={`size-3.5 shrink-0 rounded-full border ${
+                    selected ? "border-4 border-primary" : "border-muted-foreground/40"
+                  }`}
+                />
+                {method.title}
+              </button>
+            );
+          })}
+        </div>
+        <p className="px-2 pb-1 pt-1.5 text-xs leading-snug text-muted-foreground">
+          {METHODS.find((m) => m.value === prefs.deliveryMode)?.description}
+        </p>
 
-          <div>
-            <p className="px-2.5 pb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Open on</p>
-            <div className="grid grid-cols-2 gap-1 px-1">
-              {(["video", "audio"] as const).map((mode) => (
-                <Button
-                  key={mode}
-                  size="sm"
-                  variant={prefs.defaultMode === mode ? "default" : "outline"}
-                  onClick={() => set("defaultMode")(mode)}
-                >
-                  {mode === "video" ? "Video (MP4)" : "Audio (MP3)"}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col">
-            <Toggle label="Fetch when I paste a link" checked={prefs.fetchOnPaste} onChange={set("fetchOnPaste")} />
-            <Toggle label="Play sounds" checked={prefs.soundEnabled} onChange={set("soundEnabled")} />
+        <div className="my-1.5 h-px bg-border" />
+        <div className="flex items-center justify-between gap-2 px-2 py-1 text-sm">
+          <span>Open on</span>
+          <div className="flex gap-1">
+            {(["video", "audio"] as const).map((mode) => (
+              <Button
+                key={mode}
+                size="xs"
+                variant={prefs.defaultMode === mode ? "default" : "outline"}
+                onClick={() => set("defaultMode")(mode)}
+              >
+                {mode === "video" ? "Video" : "Audio"}
+              </Button>
+            ))}
           </div>
         </div>
+        <Toggle label="Fetch on paste" checked={prefs.fetchOnPaste} onChange={set("fetchOnPaste")} />
+        <Toggle label="Sounds" checked={prefs.soundEnabled} onChange={set("soundEnabled")} />
       </PopoverContent>
     </Popover>
   );
