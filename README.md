@@ -8,6 +8,11 @@ It is a React single-page app that talks to the
 [BlazFetch backend](https://github.com/ssanaullahrais/blazfetch-social-downloader) over `/api/v1`.
 It stores nothing on its own server: it is static files.
 
+> **This is the frontend only. It needs the backend to work.**
+> Backend repository: https://github.com/ssanaullahrais/blazfetch-social-downloader
+> (install, databases, platform support and the full API reference are documented there).
+> Frontend repository: https://github.com/ssanaullahrais/blazfetch-frontend
+
 ## Features
 
 | Feature | Notes |
@@ -32,7 +37,8 @@ It stores nothing on its own server: it is static files.
 ## Requirements
 
 - Node.js 20+ and [pnpm](https://pnpm.io) 10+
-- A running BlazFetch backend (default `http://localhost:4000`), see its README
+- A running BlazFetch backend (default `http://localhost:4000`), from
+  [blazfetch-social-downloader](https://github.com/ssanaullahrais/blazfetch-social-downloader). Follow its README to install and start it
 
 ## Install and run
 
@@ -41,7 +47,8 @@ pnpm install
 pnpm dev          # http://localhost:3000
 ```
 
-Start the backend first (`npm run dev` in the backend repo). The dev server proxies `/api` and
+Start the backend first (`npm run dev` in the
+[backend repo](https://github.com/ssanaullahrais/blazfetch-social-downloader)), then run the frontend. The dev server proxies `/api` and
 `/health` to `http://localhost:4000`, so there is no CORS setup for local work. The backend's
 default `CORS_ALLOWED_ORIGINS` is `http://localhost:3000`, which matches this dev server.
 
@@ -94,6 +101,7 @@ docs/
 
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): endpoint-by-endpoint mapping, data shapes and the download flow
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): building and serving with Nginx
+- [Backend README and API docs](https://github.com/ssanaullahrais/blazfetch-social-downloader): backend setup, `docs/API.md` and `docs/openapi.yaml`
 
 ## Troubleshooting
 

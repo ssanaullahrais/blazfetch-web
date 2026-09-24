@@ -1,8 +1,9 @@
 # Backend integration
 
 All calls go through [src/lib/api.ts](../src/lib/api.ts). Base path: `{VITE_API_BASE}/api/v1`. Requests send
-credentials so the backend's guest cookie (`blazfetch_guest_id`) works. See the backend's `docs/API.md`
-for the full request and response shapes.
+credentials so the backend's guest cookie (`blazfetch_guest_id`) works. See the
+[backend repository](https://github.com/ssanaullahrais/blazfetch-social-downloader) and its `docs/API.md` (and
+`docs/openapi.yaml`) for the full request and response shapes, with a real response for every platform.
 
 ## Endpoint map
 
