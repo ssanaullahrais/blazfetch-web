@@ -4,15 +4,22 @@ import { onStatsChanged } from "@/lib/stats-events";
 
 export type SiteStats = { fetches: number; downloads: number };
 
+function parseStats(data: unknown): SiteStats | null {
+  if (!data || typeof data !== "object") return null;
+  const value = data as Record<string, unknown>;
+  if (value.success === false) return null;
+  const { fetches, downloads } = value;
+  return typeof fetches === "number" && Number.isSafeInteger(fetches) && fetches >= 0 &&
+    typeof downloads === "number" && Number.isSafeInteger(downloads) && downloads >= 0
+    ? { fetches, downloads } : null;
+}
+
 /** All-time totals from the backend (GET /api/v1/stats). Resolves to null when they are not available. */
 export async function getSiteStats(): Promise<SiteStats | null> {
   try {
-    const res = await fetch(`${API}/stats`, { credentials: "include" });
+    const res = await fetch(`${API}/stats`, { credentials: "include", cache: "no-store" });
     const data = await res.json();
-    if (!res.ok || data?.success === false) return null;
-    const fetches = Number(data.fetches);
-    const downloads = Number(data.downloads);
-    return Number.isFinite(fetches) && Number.isFinite(downloads) ? { fetches, downloads } : null;
+    return res.ok ? parseStats(data) : null;
   } catch {
     return null;
   }
@@ -23,42 +30,67 @@ export function formatCount(value: number): string {
   return new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
-const POLL_MS = 20_000;
-const REFRESH_DELAY_MS = 900; // the backend counts a moment after the request, so wait a beat before asking
+const POLL_MS = 2_000;
 
 /**
- * The totals, kept live: loaded on mount, refreshed right after this visitor fetches or downloads something, and
- * polled every 20 seconds while the tab is visible so other visitors' activity shows up too.
+ * Listen for committed totals. Poll only when the live connection is unavailable, and reconnect after hiding the tab.
  */
-export function useSiteStats(): SiteStats | null {
-  const [stats, setStats] = useState<SiteStats | null>(null);
-  useEffect(() => {
+export function watchSiteStats(onStats: (value: SiteStats) => void): () => void {
     let cancelled = false;
-    let delayed: ReturnType<typeof setTimeout> | undefined;
+    let revision = 0;
+    let live = false;
+    let source: EventSource | null = null;
     const load = () => {
+      const requestRevision = ++revision;
       void getSiteStats().then((value) => {
-        if (!cancelled && value) setStats(value);
+        if (!cancelled && requestRevision === revision && value) onStats(value);
       });
     };
-    load();
+    const connect = () => {
+      if (source || document.visibilityState !== "visible" || typeof EventSource === "undefined") return;
+      try {
+        source = new EventSource(`${API}/stats/events`, { withCredentials: true });
+        source.onmessage = (event) => {
+          try {
+            const value = parseStats(JSON.parse(event.data));
+            if (!cancelled && value) {
+              live = true;
+              revision += 1; // An older HTTP request must not overwrite a pushed snapshot.
+              onStats(value);
+            }
+          } catch { /* Keep the last valid totals. */ }
+        };
+        source.onerror = () => { live = false; }; // EventSource retries; polling covers the gap.
+      } catch { live = false; }
+    };
     const poll = setInterval(() => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible" && !live) load();
     }, POLL_MS);
-    const stopListening = onStatsChanged(() => {
-      clearTimeout(delayed);
-      delayed = setTimeout(load, REFRESH_DELAY_MS);
-    });
+    const stopListening = onStatsChanged(load);
     const onVisible = () => {
-      if (document.visibilityState === "visible") load();
+      if (document.visibilityState === "visible") {
+        load();
+        connect();
+      } else {
+        source?.close();
+        source = null;
+        live = false;
+      }
     };
     document.addEventListener("visibilitychange", onVisible);
+    load();
+    connect();
     return () => {
       cancelled = true;
+      source?.close();
       clearInterval(poll);
-      clearTimeout(delayed);
       stopListening();
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+}
+
+export function useSiteStats(): SiteStats | null {
+  const [stats, setStats] = useState<SiteStats | null>(null);
+  useEffect(() => watchSiteStats(setStats), []);
   return stats;
 }

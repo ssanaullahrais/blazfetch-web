@@ -207,7 +207,14 @@ export async function fetchStreamBlob(
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new ApiError("NETWORK_ERROR", "Failed to fetch");
   }
-  if (!res.ok) throw apiErrorFromBody(await res.json().catch(() => null), res.status);
+  if (!res.ok) {
+    const error = apiErrorFromBody(await res.json().catch(() => null), res.status);
+    if (error.code !== "TURNSTILE_REQUIRED") throw error;
+    markPassLost();
+    await waitForPass();
+    res = await fetch(buildStreamUrl(params), { credentials: "include", cache: "no-store", signal: options.signal });
+    if (!res.ok) throw apiErrorFromBody(await res.json().catch(() => null), res.status);
+  }
 
   const filename = getDownloadFilename(res.headers.get("Content-Disposition"), options.fallbackName);
   const total = Number(res.headers.get("Content-Length")) || 0;
@@ -228,6 +235,7 @@ export async function fetchStreamBlob(
   }
 
   const blob = new Blob(chunks as BlobPart[], { type: res.headers.get("Content-Type") ?? undefined });
+  notifyStatsChanged();
   return { blob, filename, mode: res.headers.get("X-Blazfetch-Mode") };
 }
 
@@ -255,7 +263,9 @@ export async function startBrowserDownload(params: StreamParams, options: StartO
     if (err instanceof ApiError && err.code === "TURNSTILE_REQUIRED") {
       markPassLost();
       await waitForPass();
-      return startBrowserDownloadNow(params, options);
+      await startBrowserDownloadNow(params, options);
+      notifyStatsChanged();
+      return;
     }
     throw err;
   }

@@ -18,6 +18,7 @@ credentials so the backend's guest cookie (`blazfetch_guest_id`) works. See the
 | `GET /downloads/:id` | The file itself (browser download, or audio preview) | `downloadJobFileUrl()`, `requestDownloadJobFile()` |
 | `DELETE /downloads/:id` | Stop: cancels the job, ends yt-dlp/ffmpeg and removes temp files | `cancelDownloadJob()` |
 | `GET /stats` | The footer counter: all-time successful fetches and downloads | `getSiteStats()` |
+| `GET /stats/events` | Live committed totals over server-sent events; reconnects after interruptions | `watchSiteStats()` |
 | `GET /platforms` | Platform list for the logo grid | `getPlatforms()` |
 | `GET /health/ready` | Status button | `getBackendHealth()` |
 
@@ -75,17 +76,17 @@ Turnstile is switched on and off in the **backend's** `.env` (`TURNSTILE_ENABLED
 
 When it is on:
 
-1. **Nothing happens on a normal visit.** The check starts only when the visitor fetches or downloads something.
-   Opening the site or a stored page (`/youtube/<id>`) never triggers it.
+1. The home page loads without a challenge. A lookup, stored-media API request (`/youtube/<id>`) or download waits
+   for a pass; stored-media requests can trigger backend extraction too.
 2. [`TurnstileWidget`](../src/components/turnstile-widget.tsx) then draws the Cloudflare widget below the platform
    carousel, where the result card appears, in `interaction-only` mode: most visitors see nothing. If Cloudflare needs a
-   click, or the check takes longer than 6 seconds, the widget is shown in full. The link stays in the search box the
+   click, Cloudflare shows the challenge. A slow check displays a prompt after six seconds without restarting it. The link stays in the search box the
    whole time. The light widget is used on both themes.
 3. The solved token goes to `POST /api/v1/turnstile/verify`; the backend validates it with Cloudflare and sets a signed
    pass cookie (30 minutes by default). **Once the check is passed the widget is removed from the page.** When the pass
    expires, the check waits until the next fetch or download.
 4. If the widget fails (blocked, offline, wrong domain) the visitor sees a message and a **Try again** button.
-5. [`request()`](../src/lib/api.ts) (fetch and download calls), `startBrowserDownload()` and `fetchStreamBlob()` wait for
+5. [`request()`](../src/lib/api.ts) (fetch, media and download calls), `startBrowserDownload()` and `fetchStreamBlob()` wait for
    the pass first, and retry once if the backend answers `403 TURNSTILE_REQUIRED`. State lives in
    [`src/lib/turnstile.ts`](../src/lib/turnstile.ts) (`idle`, `needed`, `verifying`, `passed`, `error`, `off`).
 
@@ -93,6 +94,16 @@ Same origin is recommended (see [DEPLOYMENT.md](DEPLOYMENT.md)): the pass is an 
 browser navigations that carry it. For local testing use Cloudflare's dummy keys (they always pass on localhost):
 site key `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`. The widget's hostname list in the
 Cloudflare dashboard must include your domain (and `localhost` for real keys used locally).
+
+Configuration or validation outages fail closed and can be retried. The backend can additionally check
+`TURNSTILE_ALLOWED_HOSTNAMES` and `TURNSTILE_EXPECTED_ACTION`; the configured action is passed to the widget.
+The signed pass is an application session, not a Cloudflare token reused for multiple Siteverify requests.
+See Cloudflare's [server validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)
+and [widget configuration](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/widget-configurations/) documentation.
+
+The stats event stream updates after committed writes. It checks for writes by other backend workers every two
+seconds. Keep buffering disabled for `/api/v1/stats/events`; the backend sends `X-Accel-Buffering: no`.
+The UI retains the last valid totals through temporary outages and reconnects when a hidden tab becomes visible.
 
 ## Errors
 

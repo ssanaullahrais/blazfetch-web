@@ -17,18 +17,20 @@ export const API = `${API_BASE}/api/v1`;
 /** JSON request to the backend: sends the guest cookie and turns error envelopes into ApiError. */
 export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   // Fetching and downloading sit behind the optional Cloudflare Turnstile check; this waits for it when it is on.
-  const protectedCall = /^\/(fetch|download)(\/|$)/.test(path);
+  const protectedCall = /^\/(fetch|download|media)(\/|$)/.test(path);
   if (protectedCall) await waitForPass();
   try {
     const result = await send<T>(path, init);
-    if (protectedCall) notifyStatsChanged();
+    if (path === "/fetch") notifyStatsChanged();
     return result;
   } catch (err) {
     if (protectedCall && err instanceof ApiError && err.code === "TURNSTILE_REQUIRED") {
       // The pass lapsed (or was never accepted): run the check again and retry once.
       markPassLost();
       await waitForPass();
-      return send<T>(path, init);
+      const result = await send<T>(path, init);
+      if (path === "/fetch") notifyStatsChanged();
+      return result;
     }
     throw err;
   }
