@@ -1,4 +1,4 @@
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Heart } from "lucide-react";
 
 export const REPOS = [
   { name: "Frontend", detail: "blazfetch-web", url: "https://github.com/ssanaullahrais/blazfetch-web" },
@@ -17,7 +17,7 @@ function GithubMark({ className }: { className?: string }) {
 /** One quiet footer link. It opens the project's main repository, whose README links the backend too. */
 export function GithubFooter() {
   return (
-    <footer className="absolute inset-x-0 bottom-4 flex justify-center px-4 text-xs text-muted-foreground">
+    <footer className="absolute inset-x-0 bottom-4 flex flex-col items-center gap-1 px-4 text-xs text-muted-foreground">
       <a
         href={REPOS[0].url}
         target="_blank"
@@ -28,6 +28,9 @@ export function GithubFooter() {
         Open source on GitHub
         <ExternalLink className="size-3" />
       </a>
+      <p className="inline-flex items-center gap-1">
+        Developed with <Heart className="size-3 fill-red-500 text-red-500" aria-label="love" /> by BlazTools
+      </p>
     </footer>
   );
 }
