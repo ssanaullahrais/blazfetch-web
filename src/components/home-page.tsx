@@ -28,6 +28,8 @@ import {
   Share2,
   Sun,
   Moon,
+  TriangleAlert,
+  ListVideo,
 } from "lucide-react";
 import { PlatformIcons } from "@/components/platform-icons";
 import { FormatDetailsDialog } from "@/components/format-details-dialog";
@@ -45,30 +47,39 @@ import { playDownloadCompleteSound, playErrorSound } from "@/lib/sound";
 import { togglePlay, useIsPlaying, useAudioProgress, seekTo } from "@/lib/audioPlayer";
 import {
   fetchInfo,
-  getDownloadFilename,
-  startDownloadJob,
+  getStoredMedia,
   saveImage,
-  cancelDownloadJob,
-  requestDownloadJobFile,
   detectPlatformLabel,
   formatBytes,
   formatBitrate,
   formatDuration,
-  friendlyError,
+  friendlyErrorFor,
+  errorTitleFor,
+  getTombstone,
   buildFileName,
-  ApiError,
   styledBaseName,
   videoQualityBadge,
   audioQualityBadge,
   type MediaInfo,
   type MediaFormat,
+  type Tombstone,
 } from "@/lib/api";
+import { fetchStreamBlob, saveBlobToDisk, startBrowserDownload } from "@/lib/stream-download";
+import { cancelDownloadJob, startDownloadJob } from "@/lib/jobs";
 import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
+import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
+import { SettingsMenu } from "@/components/settings-menu";
+import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
 import { coerceMediaUrl } from "@/lib/media-url";
 
 type FormatKey = string;
+
+/** The progress-bar method is job-based; a quick preview always uses the streaming endpoint. */
+function streamModeFor(method: ReturnType<typeof usePreferences>["prefs"]["deliveryMode"]) {
+  return method === "progress" ? "auto" : method;
+}
 
 function keyFor(mode: "video" | "audio", format_id?: string) {
   return `${mode}:${format_id ?? "best"}`;
@@ -93,8 +104,10 @@ type BrandState = "idle" | "fetching" | "downloading";
  * starts the icon swaps to a Download glyph inside a real progress ring
  * (driven by the download's own percentage) instead of sitting there
  * purely decoratively. */
-function BrandMark({ state, progress = 0, className = "size-7" }: { state: BrandState; progress?: number; className?: string }) {
-  const pct = Math.max(0, Math.min(100, progress));
+function BrandMark({ state, progress = 0, className = "size-7" }: { state: BrandState; progress?: number | null; className?: string }) {
+  // `null` means "working, but no real percentage" (a download handed to the browser): show the spinning arc.
+  const indeterminate = progress === null;
+  const pct = Math.max(0, Math.min(100, progress ?? 0));
 
   return (
     <motion.span
@@ -102,7 +115,7 @@ function BrandMark({ state, progress = 0, className = "size-7" }: { state: Brand
       animate={state === "idle" ? { scale: [1, 1.05, 1] } : { scale: 1 }}
       transition={{ duration: 2.6, repeat: state === "idle" ? Infinity : 0, ease: "easeInOut" }}
     >
-      {state === "fetching" && (
+      {(state === "fetching" || (state === "downloading" && indeterminate)) && (
         <motion.svg
           className="absolute inset-[-3px]"
           viewBox="0 0 100 100"
@@ -113,7 +126,7 @@ function BrandMark({ state, progress = 0, className = "size-7" }: { state: Brand
         </motion.svg>
       )}
 
-      {state === "downloading" && (
+      {state === "downloading" && !indeterminate && (
         <svg className="absolute inset-[-3px] -rotate-90" viewBox="0 0 100 100">
           <circle cx="50" cy="50" r="47" fill="none" stroke="var(--foreground)" strokeOpacity="0.18" strokeWidth="5" />
           <motion.circle
@@ -220,6 +233,8 @@ export function HomePage() {
   const [fetchedUrl, setFetchedUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [info, setInfo] = useState<MediaInfo | null>(null);
+  // Set when the backend says a video it remembers is gone (410 MEDIA_UNAVAILABLE).
+  const [unavailable, setUnavailable] = useState<Tombstone | null>(null);
   const [progress, setProgress] = useState<Record<FormatKey, number>>({});
   const [downloadStatus, setDownloadStatus] = useState<Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">>({});
   const [activeTab, setActiveTab] = useState<"video" | "audio" | "images">(prefs.defaultMode);
@@ -245,12 +260,36 @@ export function HomePage() {
     setActiveTab(prefs.defaultMode);
   }, [prefs.defaultMode]);
 
+  // Back/forward between stored pages (and back to the home page).
+  useEffect(() => {
+    const onPopState = () => {
+      const path = storedPathFromLocation(window.location.pathname);
+      if (path) {
+        void openStoredPath(path);
+      } else {
+        setInfo(null);
+        setUnavailable(null);
+        setUrl("");
+        setFetchedUrl("");
+        document.title = "BlazFetch";
+      }
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const autoFetchedRef = useRef(false);
   useEffect(() => {
     if (autoFetchedRef.current) return; // guards against React 18 StrictMode's double-invoked mount effect in dev
     autoFetchedRef.current = true;
+    const storedPath = storedPathFromLocation(window.location.pathname);
     const shared = new URLSearchParams(window.location.search).get("url");
-    if (shared) {
+    if (storedPath) {
+      // A page like /youtube/<id>: served from the backend's stored copy.
+      void openStoredPath(storedPath);
+    } else if (shared) {
+      // A legacy /?url=<link> share link: fetch it, then the address bar becomes the stable page path.
       void handleSearch(shared, { preserveAddress: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,6 +322,40 @@ export function HomePage() {
     window.location.href = "/";
   }
 
+  /** Puts a loaded result on screen and points the address bar at its stable page path. */
+  function showResult(data: MediaInfo, sourceUrl: string, opts: { keepAddress?: boolean } = {}) {
+    setUnavailable(null);
+    setInfo(data);
+    setFetchedUrl(sourceUrl);
+    if (data.type === "images") setActiveTab("images");
+    else if (data.type === "carousel") setActiveTab(data.carouselVideos?.length ? "video" : "images");
+    else if (data.audioOnly) setActiveTab("audio");
+    // The address bar becomes the stable page path (/youtube/<id>), so copying it shares this video.
+    if (!opts.keepAddress) {
+      window.history.replaceState(null, "", data.stored?.path ?? `/?url=${encodeURIComponent(sourceUrl)}`);
+    }
+    document.title = `${data.title} · BlazFetch`;
+  }
+
+  /** The backend remembers this video but found it gone: show what it was instead of an error. */
+  function showUnavailable(tombstone: Tombstone, sourceUrl?: string) {
+    const link = tombstone.sourceUrl ?? sourceUrl ?? null;
+    setInfo(null);
+    setUnavailable({ ...tombstone, sourceUrl: link });
+    if (link) {
+      setUrl(link);
+      setFetchedUrl(link);
+    }
+    if (tombstone.path) window.history.replaceState(null, "", tombstone.path);
+    document.title = `${tombstone.title ?? "Video"} (unavailable) · BlazFetch`;
+  }
+
+  function showFailure(err: unknown) {
+    console.error("[fetch video info]", err instanceof Error ? err.message : err);
+    toast.error(<ErrorToast title={errorTitleFor(err)} message={friendlyErrorFor(err)} />);
+    if (prefs.soundEnabled) playErrorSound();
+  }
+
   async function handleSearch(
     inputUrl = url,
     opts: { preserveAddress?: boolean; forceRefresh?: boolean; rangeStart?: number; rangeEnd?: number } = {}
@@ -295,48 +368,61 @@ export function HomePage() {
     }
     setLoading(true);
     setInfo(null);
+    setUnavailable(null);
     resetPerVideoDownloadState();
-    // A permalink/share-link visit already has the right address bar and
-    // nothing typed in the search box — leave both alone instead of
-    // flashing the raw URL into the box and briefly blanking the address
-    // bar to "/" while this fetch is in flight.
+    // A share-link visit has nothing typed in the search box: leave it alone instead of flashing the raw URL.
     if (!opts.preserveAddress) {
       setUrl(requestedUrl);
-      // Clear the previous video's share link from the address bar right away
-      // instead of leaving it there until the new one's link resolves.
+      // Clear the previous video's page path from the address bar right away.
       window.history.replaceState(null, "", "/");
+      document.title = "BlazFetch";
     }
     try {
       const data = await fetchInfo(requestedUrl, {
         ...(opts.forceRefresh ? { forceRefresh: true } : {}),
         ...(opts.rangeStart ? { rangeStart: opts.rangeStart, rangeEnd: opts.rangeEnd } : {}),
       });
-      setInfo(data);
-      setFetchedUrl(requestedUrl);
-      // The fetched URL stays in the box rather than being cleared — it's
-      // what the result card below is showing, and clearing it read as the
-      // fetch having lost/forgotten the URL rather than completed with it.
-      if (data.type === "images") setActiveTab("images");
-      else if (data.type === "carousel") setActiveTab(data.carouselVideos?.length ? "video" : "images");
-      else if (data.extractor === "soundcloud") setActiveTab("audio");
-      // Keep the address bar shareable: /?url=<source link> re-fetches on load.
-      if (!opts.preserveAddress) {
-        window.history.replaceState(null, "", `/?url=${encodeURIComponent(requestedUrl)}`);
-      }
+      // The fetched URL stays in the box: it is what the result card below is showing.
+      showResult(data, requestedUrl);
       toast.success(
         <div className="flex max-w-56 flex-col">
           <span className="font-medium text-primary">Video found</span>
           <span className="line-clamp-1 text-xs text-muted-foreground">{data.title}</span>
         </div>
       );
-
     } catch (err) {
-      const rawMessage = err instanceof Error ? err.message : "Something went wrong.";
-      console.error("[fetch video info]", rawMessage);
-      const message = friendlyError(rawMessage, requestedUrl);
-      const title = err instanceof ApiError && err.code === "UNSUPPORTED_PLATFORM" ? "Not supported" : "Try again later";
-      toast.error(<ErrorToast title={title} message={message} />);
-      if (prefs.soundEnabled) playErrorSound();
+      const tombstone = getTombstone(err);
+      if (tombstone) showUnavailable(tombstone, requestedUrl);
+      else showFailure(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /** Follows an in-app link to a stored page (e.g. a video's playlist) and keeps the browser's back button working. */
+  function goToStoredPath(path: string) {
+    window.history.pushState(null, "", path);
+    void openStoredPath(path);
+  }
+
+  /** Opens a stable page path such as /youtube/<id> from the backend's stored copy. */
+  async function openStoredPath(path: string) {
+    setLoading(true);
+    setInfo(null);
+    setUnavailable(null);
+    resetPerVideoDownloadState();
+    try {
+      const data = await getStoredMedia(path);
+      setUrl(data.webpage_url);
+      showResult(data, data.webpage_url, { keepAddress: true });
+    } catch (err) {
+      const tombstone = getTombstone(err);
+      if (tombstone) {
+        showUnavailable(tombstone);
+      } else {
+        showFailure(err);
+        window.history.replaceState(null, "", "/");
+      }
     } finally {
       setLoading(false);
     }
@@ -362,81 +448,25 @@ export function HomePage() {
     formatMeta?: MediaFormat,
     onProgress?: (pct: number) => void,
     signal?: AbortSignal,
-    urlOverride?: string,
-    onStatus?: (status: "queued" | "running") => void
+    urlOverride?: string
   ) {
     const cached = blobCache.get(key);
     if (cached) return cached;
 
     // Download and preview share one fetch per format: if one is already in
     // flight (from either the Download button or the Play button), the other
-    // just joins it instead of starting a second network request — so
-    // clicking Play while it's already downloading plays it the moment it's ready.
+    // just joins it instead of starting a second network request.
     const pending = pendingFetches.get(key);
     if (pending) return pending;
 
     const promise = (async () => {
       const baseName = buildName(mode, media, formatMeta);
-      // A subject already at their plan's concurrency limit still gets a
-      // real job back here, just with status "queued" instead of "running"
-      // — the server auto-promotes it the moment a slot frees (see
-      // admitOrQueue/fillSlots), so this just reports that starting state
-      // up front rather than treating it as an error.
-      const { id: jobId, status: initialStatus } = await startDownloadJob({
-        url: urlOverride ?? fetchedUrl,
-        formatId: format_id,
-        kind: mode,
-        quality: !format_id && mode === "video" ? prefs.preferredQuality : undefined,
-      });
-      // The Downloads popover/sidebar badges poll on their own interval —
-      // this lets them pick up a job that just started right away instead
-      // of waiting out that timer.
-      if (initialStatus === "queued" || initialStatus === "running") onStatus?.(initialStatus);
-
-      const settled = await waitForDownloadJob(jobId, {
-        signal,
-        onAbort: () => cancelDownloadJob(jobId),
-        onUpdate: (job) => {
-          if (job.status !== "queued" && job.status !== "running") return;
-          // Reserve the last 30% for transferring the prepared server file
-          // into the browser, so the progress bar never appears to restart.
-          onProgress?.(Math.min(70, Math.max(0, Math.round(job.progress * 0.7))));
-          onStatus?.(job.status);
-        },
-      });
-      if (settled.status === "cancelled") throw new DOMException("Aborted", "AbortError");
-      if (settled.status === "error") throw new Error(settled.error || "Download failed.");
-
-      const res = await requestDownloadJobFile(jobId);
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new ApiError(body?.error?.code ?? "DOWNLOAD_FAILED", body?.error?.message ?? "Download failed.", res.status);
-      }
-      const filename = getDownloadFilename(
-        res.headers.get("Content-Disposition"),
-        `${baseName}.${mode === "audio" ? "mp3" : "mp4"}`
+      // The file arrives through one streamed request. Audio is small enough to keep in memory for playback.
+      const { blob, filename } = await fetchStreamBlob(
+        { url: urlOverride ?? fetchedUrl, kind: mode, formatId: format_id, filename: baseName, mode: streamModeFor(prefs.deliveryMode) },
+        { signal, onProgress, fallbackName: `${baseName}.${mode === "audio" ? "m4a" : "mp4"}` }
       );
-      const total = Number(res.headers.get("Content-Length")) || 0;
-
-      const reader = res.body?.getReader();
-      const chunks: Uint8Array[] = [];
-      let received = 0;
-
-      if (reader) {
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          chunks.push(value);
-          received += value.length;
-          // Continues from where the server-side phase left off (see the
-          // matching comment in waitForJobSettled) instead of restarting at 0.
-          if (total > 0) onProgress?.(Math.min(99, 70 + Math.round((received / total) * 29)));
-        }
-      }
-
-      const blob = new Blob(chunks as BlobPart[]);
-      const blobUrl = URL.createObjectURL(blob);
-      const result = { blobUrl, filename, blob };
+      const result = { blobUrl: URL.createObjectURL(blob), filename, blob };
       blobCache.set(key, result);
       return result;
     })();
@@ -527,12 +557,11 @@ export function HomePage() {
     mode: "video" | "audio",
     format_id?: string,
     mediaOverride?: MediaInfo,
-    _formatMeta?: MediaFormat,
+    formatMeta?: MediaFormat,
     urlOverride?: string,
     keyOverride?: FormatKey
   ) {
     const media = mediaOverride ?? info;
-    void _formatMeta; // kept so callers can pass the picked format positionally
     if (!media) return;
     const key = keyOverride ?? keyFor(mode, format_id);
 
@@ -546,36 +575,46 @@ export function HomePage() {
       clearDownloadState(key);
     };
 
-    // Reset to idle up front so a re-click on an already-"Downloaded" row
+    // Reset to idle up front so a re-click on an already-started row
     // doesn't keep showing that stale label for an instant.
     clearDownloadState(key);
+
+    // Audio the user already listened to is in memory: save that instead of asking the server again.
+    const cached = blobCache.get(key);
+    if (cached) {
+      saveBlobToDisk(cached.blob, cached.filename);
+      setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
+      if (prefs.soundEnabled) playDownloadCompleteSound();
+      return;
+    }
 
     try {
       setProgress((p) => ({ ...p, [key]: 0 }));
       setDownloadStatus((s) => ({ ...s, [key]: "preparing" }));
-      const created = await startDownloadJob({
-        url: urlOverride ?? fetchedUrl,
-        formatId: format_id,
-        kind: mode,
-        quality: !format_id && mode === "video" ? prefs.preferredQuality : undefined,
-      });
+      if (prefs.deliveryMode === "progress") {
+        await downloadWithProgress(mode, key, urlOverride ?? fetchedUrl, format_id, controller.signal, isCurrent);
+      } else {
+        // One request straight to the browser's download manager. It resolves when bytes start flowing
+        // (or rejects with the server's own error), so "Preparing" ends exactly when the download begins.
+        await startBrowserDownload(
+          {
+            url: urlOverride ?? fetchedUrl,
+            kind: mode,
+            formatId: format_id,
+            filename: buildName(mode, media, formatMeta),
+            mode: prefs.deliveryMode,
+          },
+          { signal: controller.signal }
+        );
+      }
       if (!isCurrent()) return;
-      const settled = await waitForJobThenSave(created.id, key, controller.signal, isCurrent);
-      if (!isCurrent()) return;
-      if (settled.status === "cancelled") throw new DOMException("Aborted", "AbortError");
-      if (settled.status === "error") throw new Error(settled.error || "Download failed.");
-
-      setProgress((p) => ({ ...p, [key]: 100 }));
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
       closeStopDialogForKeys([key]);
       if (prefs.soundEnabled) playDownloadCompleteSound();
     } catch (err) {
       if (!isCurrent()) return; // superseded by a newer click in the same mode — stay quiet
       if (err instanceof DOMException && err.name === "AbortError" && userStoppedKeys.delete(key)) {
-        // Only a real click on Stop adds a key here — a job can also land
-        // in "cancelled" because the connection itself dropped mid-stream.
-        // That's a real failure, not something to hide, so it falls
-        // through to reportDownloadError below instead of returning here.
+        // Only a real click on Stop adds a key here.
         toast.success("Download stopped.");
         clearState();
         return;
@@ -584,25 +623,6 @@ export function HomePage() {
       reportDownloadError(err, urlOverride ?? fetchedUrl, prefs.soundEnabled);
       clearState();
     }
-  }
-
-  /** Waits for the backend job to finish preparing, then hands the file to the browser. */
-  async function waitForJobThenSave(
-    jobId: string,
-    key: FormatKey,
-    signal: AbortSignal,
-    isCurrent: () => boolean
-  ) {
-    const settled = await waitForDownloadJob(jobId, {
-      signal,
-      onAbort: () => cancelDownloadJob(jobId),
-      onUpdate: (job) => {
-        if (!isCurrent()) return;
-        if (job.status === "running") setProgress((p) => ({ ...p, [key]: Math.min(99, Math.max(0, job.progress)) }));
-      },
-    });
-    if (settled.status === "ready" && isCurrent()) startNativeDownload(jobId);
-    return settled;
   }
 
   // Images are plain files on the source's CDN (the backend only lists them),
@@ -623,8 +643,41 @@ export function HomePage() {
     }
   }
 
-  // Carousel/board videos are downloaded through POST /download with the post
-  // URL plus the item's own formatId.
+  /**
+   * The "With progress bar" method: POST /download starts a job on the server, GET /jobs/:id reports real
+   * progress while it prepares the file, then the finished file goes to the browser. Stop cancels the job.
+   */
+  async function downloadWithProgress(
+    mode: "video" | "audio",
+    key: FormatKey,
+    sourceUrl: string,
+    format_id: string | undefined,
+    signal: AbortSignal,
+    isCurrent: () => boolean
+  ) {
+    const created = await startDownloadJob({
+      url: sourceUrl,
+      formatId: format_id,
+      kind: mode,
+      quality: !format_id && mode === "video" ? prefs.preferredQuality : undefined,
+    });
+    if (!isCurrent()) return;
+    const settled = await waitForDownloadJob(created.id, {
+      signal,
+      onAbort: () => cancelDownloadJob(created.id),
+      onUpdate: (job) => {
+        if (!isCurrent()) return;
+        if (job.status === "running") setProgress((p) => ({ ...p, [key]: Math.min(99, Math.max(0, job.progress)) }));
+      },
+    });
+    if (!isCurrent()) return;
+    if (settled.status === "cancelled") throw new DOMException("Aborted", "AbortError");
+    if (settled.status === "error") throw new Error(settled.error || "Download failed.");
+    startNativeDownload(created.id);
+  }
+
+  // Carousel/board videos: the item's own formatId belongs to this post, so the server prepares it
+  // from the post link (mode=prepare).
   async function runCarouselVideoDownload(formatId: string, key: FormatKey) {
     downloadControllers.get(key)?.abort();
     const controller = new AbortController();
@@ -637,19 +690,20 @@ export function HomePage() {
     try {
       setProgress((p) => ({ ...p, [key]: 0 }));
       setDownloadStatus((s) => ({ ...s, [key]: "preparing" }));
-      const created = await startDownloadJob({ url: fetchedUrl, formatId, kind: "video" });
+      await startBrowserDownload(
+        { url: fetchedUrl, kind: "video", formatId, filename: sanitizeFilenameLocal(info?.title ?? "video"), mode: "prepare" },
+        { signal: controller.signal }
+      );
       if (!isCurrent()) return;
-      const settled = await waitForJobThenSave(created.id, key, controller.signal, isCurrent);
-      if (!isCurrent()) return;
-      if (settled.status === "cancelled") throw new DOMException("Aborted", "AbortError");
-      if (settled.status === "error") throw new Error(settled.error || "Download failed.");
-
-      setProgress((p) => ({ ...p, [key]: 100 }));
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
       closeStopDialogForKeys([key]);
       if (prefs.soundEnabled) playDownloadCompleteSound();
     } catch (err) {
       if (!isCurrent()) return;
+      if (err instanceof DOMException && err.name === "AbortError") {
+        clearDownloadState(key);
+        return;
+      }
       reportDownloadError(err, fetchedUrl, prefs.soundEnabled);
       clearDownloadState(key);
     }
@@ -739,8 +793,12 @@ export function HomePage() {
   // otherwise the brand mark reflects the info-fetch request instead.
   const preparingKeys = (Object.keys(downloadStatus) as FormatKey[]).filter((k) => downloadStatus[k] === "preparing");
   const isDownloading = preparingKeys.length > 0;
+  // Downloads handed to the browser have no percentage; only an audio preview does. Without one the ring spins.
+  const knownProgress = preparingKeys.map((k) => progress[k] ?? 0).filter((v) => v > 0);
   const brandProgress = isDownloading
-    ? preparingKeys.reduce((sum, k) => sum + (progress[k] ?? 0), 0) / preparingKeys.length
+    ? knownProgress.length
+      ? knownProgress.reduce((sum, v) => sum + v, 0) / knownProgress.length
+      : null
     : 0;
   const brandState: BrandState = isDownloading ? "downloading" : loading ? "fetching" : "idle";
 
@@ -748,6 +806,9 @@ export function HomePage() {
     if (!confirmState) return;
     if (downloadStatus[confirmState.key] !== "preparing") setConfirmState(null);
   }, [confirmState, downloadStatus]);
+
+  // The page path (/youtube/<id>) is what gets shared, so the link opens instantly from the backend's stored copy.
+  const shareUrl = fetchedUrl && info ? shareUrlForPath(window.location.origin, info.stored?.path, fetchedUrl) : null;
 
   return (
     <ScrollArea className="h-dvh w-full min-w-0">
@@ -804,7 +865,7 @@ export function HomePage() {
                   </SheetHeader>
                   <div className="flex flex-col gap-3 p-4">
                     <ShareMenu
-                      shareableUrl={fetchedUrl && info ? `${window.location.origin}/?url=${encodeURIComponent(fetchedUrl)}` : null}
+                      shareableUrl={shareUrl}
                       trigger={
                         <button type="button" className={MENU_ROW_CLASS}>
                           <span className="min-w-0">
@@ -846,9 +907,10 @@ export function HomePage() {
 
           <div className="flex items-center gap-1.5 sm:gap-2">
             <ServiceStatus />
+            <SettingsMenu />
             <div className="hidden lg:block">
               <ShareMenu
-                shareableUrl={fetchedUrl && info ? `${window.location.origin}/?url=${encodeURIComponent(fetchedUrl)}` : null}
+                shareableUrl={shareUrl}
               />
             </div>
             <ThemeToggle />
@@ -946,7 +1008,7 @@ export function HomePage() {
               />
             ) : (
               <div className="flex h-40 w-full shrink-0 items-center justify-center rounded-md bg-muted sm:h-24 sm:w-40">
-                {info.extractor === "soundcloud" ? (
+                {info.audioOnly ? (
                   <Music2 className="size-6 text-muted-foreground" />
                 ) : (
                   <Video className="size-6 text-muted-foreground" />
@@ -992,6 +1054,53 @@ export function HomePage() {
                   <RefreshCw className="size-3" />
                   Refresh
                 </Button>
+                {info.stored?.playlistPath && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-fit gap-1 px-2 text-xs text-muted-foreground"
+                    onClick={() => goToStoredPath(info.stored!.playlistPath!)}
+                  >
+                    <ListVideo className="size-3" />
+                    View playlist
+                  </Button>
+                )}
+                {info.fallbackUsed && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge
+                        variant="outline"
+                        className="h-5 gap-1 border-amber-500/40 px-1.5 text-[10px] leading-none font-normal text-amber-600 dark:text-amber-400"
+                      >
+                        <TriangleAlert className="size-3" />
+                        Backup source
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-56">
+                      The main source is blocking us right now, so this uses a backup. Quality can be lower (usually up to
+                      720p).
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {info.stored?.validationFailed && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px] leading-none font-normal text-muted-foreground">
+                        <Clock className="size-3" />
+                        May be outdated
+                      </Badge>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-56">
+                      We couldn't re-check this video just now, so this is the last version we saw.
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+                {(info.stored?.downloads ?? 0) > 0 && (
+                  <Badge variant="outline" className="h-5 gap-1 px-1.5 text-[10px] leading-none font-normal text-muted-foreground">
+                    <Download className="size-3" />
+                    {info.stored!.downloads.toLocaleString()} {info.stored!.downloads === 1 ? "download" : "downloads"}
+                  </Badge>
+                )}
               </div>
             </div>
           </div>
@@ -1031,7 +1140,7 @@ export function HomePage() {
                 )}
               </TabsList>
             ) : (
-              info.extractor !== "soundcloud" && (
+              !info.audioOnly && (
                 <TabsList className="w-full">
                   {(() => {
                     const videoTrigger = (
@@ -1084,7 +1193,7 @@ export function HomePage() {
               </>
             ) : (
               <>
-                {info.extractor !== "soundcloud" && (
+                {!info.audioOnly && (
                   <TabsContent value="video" className="flex flex-col gap-2 pt-3">
                     {info.type === "playlist" ? (
                       <PlaylistFormatList
@@ -1140,6 +1249,14 @@ export function HomePage() {
           </Tabs>
           </Card>
           </motion.div>
+        )}
+
+        {unavailable && !loading && (
+          <UnavailableCard
+            tombstone={unavailable}
+            retrying={loading}
+            onRetry={() => void handleSearch(fetchedUrl || unavailable.sourceUrl || "", { forceRefresh: true })}
+          />
         )}
       </AnimatePresence>
     </div>
@@ -1330,6 +1447,7 @@ function ImageFormatList({
             dense
             mediaType="video"
             status={downloadStatus[key]}
+            doneLabel="Saved"
             onDownload={() => runImageDownload(image.url, key, title)}
           />
         );
@@ -1342,7 +1460,8 @@ function ImageFormatList({
  * mirrors the server's own but keeps this component independent of the
  * styledBaseName pipeline built for video/audio naming conventions. */
 function sanitizeFilenameLocal(name: string) {
-  return (name || "instagram-image").replace(/[\\/:*?"<>|\x00-\x1f]/g, "_").slice(0, 100).trim() || "instagram-image";
+  const cleaned = Array.from(name || "", (ch) => (ch.charCodeAt(0) < 32 || /[\\/:*?"<>|]/.test(ch) ? "_" : ch)).join("");
+  return cleaned.slice(0, 100).trim() || "download";
 }
 
 function VideoFormatList({
@@ -1536,6 +1655,7 @@ function FormatRow({
   thumbnailSize = "sm",
   selected,
   onToggleSelect,
+  doneLabel = "Started",
 }: {
   label: string;
   sub?: string;
@@ -1572,6 +1692,8 @@ function FormatRow({
    * clicks. */
   selected?: boolean;
   onToggleSelect?: (e: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean }) => void;
+  /** Shown on the button once done: "Started" for a download handed to the browser, "Saved" for an image. */
+  doneLabel?: string;
 }) {
   const isDone = status === "downloaded";
   const isPlaying = useIsPlaying(playKey ?? "");
@@ -1698,6 +1820,7 @@ function FormatRow({
                 }
                 onClick={onDownload}
                 sizeLabel={sizeLabel}
+                doneLabel={doneLabel}
                 className="w-full sm:w-auto"
               />
             );

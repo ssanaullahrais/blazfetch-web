@@ -1,4 +1,4 @@
-import { getDownloadJob, type DownloadJobStatus } from "@/lib/api";
+import { getDownloadJob, type DownloadJobStatus } from "@/lib/jobs";
 
 const TERMINAL = new Set<DownloadJobStatus["status"]>(["ready", "error", "cancelled"]);
 const POLL_MS = 1_000;

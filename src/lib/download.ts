@@ -1,4 +1,4 @@
-import { downloadJobFileUrl } from "@/lib/api";
+import { downloadJobFileUrl } from "@/lib/jobs";
 
 /** Hands a finished job's file to the browser's own download manager. */
 export function startNativeDownload(jobId: string) {

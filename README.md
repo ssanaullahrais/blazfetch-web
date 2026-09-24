@@ -18,9 +18,13 @@ It stores nothing on its own server: it is static files.
 | Playlists | YouTube playlists list every video; open one to fetch its formats |
 | Carousels and galleries | Instagram carousels and Pinterest pins/boards: videos and images in separate tabs |
 | Large boards | Pinterest board range picker (`rangeStart` / `rangeEnd`) |
-| Progress and Stop | Live "Preparing…" progress, then the browser download. Stop cancels the job and cleans up |
+| Download methods | Settings menu: Automatic (default), Fastest (direct stream), Compatible MP4 (H.264/AAC), or With progress bar (job flow). Downloads go straight to the browser's download manager, nothing is held in memory |
+| Stop | Cancels the download and the backend cleans up its processes |
 | Refresh | Re-fetches a link and skips the backend's metadata cache (`forceRefresh`) |
-| Share links | `/?url=<link>` re-fetches on load |
+| Stable pages | Every fetched item gets a permanent path such as `/youtube/dQw4w9WgXcQ`. It is put in the address bar, can be shared and opens instantly from the backend's media store |
+| Media store info | Download count badge, "May be outdated" (revalidation failed), "Backup source" (YouTube fallback provider), playlist page link |
+| Unavailable media | A removed video (HTTP 410) shows a "No longer available" card with the reason and dates |
+| Legacy share links | `/?url=<link>` still re-fetches on load |
 | Platform logos | Driven by the backend's platform list, with brand logos for all 18 |
 | Health button | Top right: "Healthy" or "Service unavailable" |
 | Light / dark theme | Installable as a PWA |
@@ -56,6 +60,7 @@ pnpm dev          start the dev server
 pnpm build        type-check and build to dist/
 pnpm preview      serve the production build locally
 pnpm typecheck    TypeScript only
+pnpm test         unit tests (Vitest, real backend response fixtures)
 pnpm lint         ESLint
 pnpm format       Prettier
 ```
@@ -72,10 +77,14 @@ src/
     share-menu.tsx, theme-toggle.tsx, format-details-dialog.tsx, ...
     ui/                    shadcn/ui primitives
   lib/
-    api.ts                 backend client: fetch, audio, jobs, platforms, health
+    api.ts                 backend client: fetch, audio, stored media, platforms, health
+    stream-download.ts     GET /stream downloads (hidden frame + start cookie)
+    jobs.ts                POST /download, /jobs, /downloads (progress-bar method)
+    errors.ts              ApiError, error codes to friendly text, tombstones
+    media-path.ts          stable page paths (/youtube/<id>)
     waitForDownloadJob.ts  job polling
     download.ts            hands the finished file to the browser
-    preferences.ts         local preferences (default tab, sound, ...)
+    preferences.ts         local preferences (download method, default tab, sound, ...)
 docs/
   INTEGRATION.md           how the UI maps to each backend endpoint
   DEPLOYMENT.md            production build, Nginx, backend CORS
@@ -91,4 +100,5 @@ docs/
 - **Everything says "Failed to fetch" or the health button is red:** the backend is not running or is not on port 4000. Check `http://localhost:4000/health/ready`.
 - **Requests fail with a CORS error when using `VITE_API_BASE`:** add this site's origin to the backend's `CORS_ALLOWED_ORIGINS`.
 - **A platform link errors:** the backend reports a specific reason (private video, login required, region locked) and it is shown as-is. Updating yt-dlp on the backend often fixes extractor errors.
+- **Downloads or stored pages misbehave when the API is on another origin:** the app can only detect a started or failed download when `/api` is same origin (it reads the start cookie and the error page). Cross-origin still works but errors are not shown. Prefer same origin.
 - **An image opens in a new tab instead of downloading:** the source's CDN blocks reading the file from a browser. Save it from the new tab.
