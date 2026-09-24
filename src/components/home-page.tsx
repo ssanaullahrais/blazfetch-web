@@ -17,6 +17,7 @@ import {
   Clock,
   HardDrive,
   ImageIcon,
+  ClipboardPaste,
   Loader2,
   Music2,
   Pause,
@@ -320,6 +321,22 @@ export function HomePage() {
     setDownloadStatus({});
     setPreviewLoading({});
     setPreviewProgress({});
+  }
+
+  /** The Paste button: reads the clipboard, fills the box and fetches straight away. */
+  async function pasteFromClipboard() {
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+      if (!text) {
+        toast.error("Nothing to paste. Copy a video link first.");
+        return;
+      }
+      setUrl(text);
+      void handleSearch(text);
+    } catch {
+      // Blocked or unsupported: fall back to the normal paste gesture in the box.
+      toast.error("Allow clipboard access, or long-press the box and choose Paste.");
+    }
   }
 
   function goHome() {
@@ -967,9 +984,14 @@ export function HomePage() {
           placeholder="Paste a video URL (YouTube, TikTok, Instagram…)"
           className="h-12 text-base placeholder:text-sm"
         />
-        <Button size="lg" className="h-12 w-full px-6 sm:w-auto" onClick={() => handleSearch()} disabled={loading}>
-          {loading ? <Loader2 className="animate-spin" /> : <Search />}
-          <span>Fetch</span>
+        <Button
+          size="lg"
+          className="h-12 w-full px-6 sm:w-auto"
+          onClick={() => (url.trim() ? handleSearch() : void pasteFromClipboard())}
+          disabled={loading}
+        >
+          {loading ? <Loader2 className="animate-spin" /> : url.trim() ? <Search /> : <ClipboardPaste />}
+          <span>{url.trim() ? "Fetch" : "Paste"}</span>
         </Button>
       </motion.div>
 
