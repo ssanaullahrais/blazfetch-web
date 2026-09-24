@@ -1,7 +1,7 @@
 # Deployment
 
 Deploy the backend first: see the
-[backend repository](https://github.com/ssanaullahrais/blazfetch-social-downloader) and its VPS guide.
+[backend repository](https://github.com/ssanaullahrais/blazfetch-api) and its VPS guide.
 
 The frontend builds to static files. Serve them with Nginx and route `/api` and `/health` to the backend
 on the same domain, so the browser needs no CORS setup and the guest cookie stays first-party.
