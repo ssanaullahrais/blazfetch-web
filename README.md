@@ -28,6 +28,16 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 > Its README covers installing the system tools, choosing a database (SQLite, PostgreSQL, MySQL or MongoDB),
 > platform support and the full API reference.
 
+## Demo
+
+<div align="center">
+
+<a href="docs/media/demo.mp4"><img src="docs/media/demo.gif" alt="BlazFetch demo: paste a link, pick a quality, download" width="760" /></a>
+
+<sub>Click the animation to open the full video ([demo.mp4](docs/media/demo.mp4)).</sub>
+
+</div>
+
 ## Highlights
 
 - **18 platforms, one input.** YouTube, TikTok, Instagram, X/Twitter, Facebook, Reddit, Vimeo, Dailymotion, Bluesky, Streamable, Rutube, SoundCloud, Snapchat, Twitch, Pinterest, Loom, Newgrounds and Tumblr.
