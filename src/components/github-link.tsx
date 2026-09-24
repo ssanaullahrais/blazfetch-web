@@ -14,24 +14,26 @@ function GithubMark({ className }: { className?: string }) {
   );
 }
 
-/** One quiet footer link. It opens the project's main repository, whose README links the backend too. */
+/** Footer that mirrors the header: the GitHub link on the left edge, the credit on the right edge. It opens the
+ * project's main repository, whose README links the backend too. */
 export function GithubFooter() {
   return (
-    <footer className="absolute inset-x-0 bottom-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 text-xs text-muted-foreground">
-      <a
-        href={REPOS[0].url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-foreground hover:underline"
-      >
-        <GithubMark className="size-3.5" />
-        Open source on GitHub
-        <ExternalLink className="size-3" />
-      </a>
-      <span aria-hidden>·</span>
-      <p className="inline-flex items-center gap-1">
-        Developed with <Heart className="size-3 fill-red-500 text-red-500" aria-label="love" /> by BlazTools
-      </p>
+    <footer className="absolute inset-x-0 bottom-0 text-xs text-muted-foreground">
+      <div className="mx-auto flex w-full max-w-[1340px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-4">
+        <a
+          href={REPOS[0].url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-foreground hover:underline"
+        >
+          <GithubMark className="size-3.5" />
+          Open source on GitHub
+          <ExternalLink className="size-3" />
+        </a>
+        <p className="inline-flex items-center gap-1">
+          Developed with <Heart className="size-3 fill-red-500 text-red-500" aria-label="love" /> by BlazTools
+        </p>
+      </div>
     </footer>
   );
 }
