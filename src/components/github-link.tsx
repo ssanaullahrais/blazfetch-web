@@ -53,7 +53,7 @@ export function GithubFooter() {
           className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-foreground hover:underline"
         >
           <GithubMark className="size-3.5" />
-          View source on GitHub
+          Give a star on GitHub
           <ExternalLink className="size-3" />
         </a>
         <span aria-hidden className="hidden text-muted-foreground/50 sm:inline">|</span>

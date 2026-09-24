@@ -38,7 +38,7 @@ Then replace the artwork in `public/` with your own, keeping the file names:
 
 ## The footer credit stays
 
-The [license](../LICENSE) requires the footer credit ("View source on GitHub" and "Developed with ♥ by Sanaullah Rais")
+The [license](../LICENSE) requires the footer credit ("Give a star on GitHub" and "Developed with ♥ by Sanaullah Rais")
 to stay visible and unchanged. It is deliberately **not** configurable here, and `pnpm build` stops if it is removed.
 You can restyle it (colour, size, position). To remove it you need the author's written permission.
 

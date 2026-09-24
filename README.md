@@ -120,7 +120,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Bot check | Optional Cloudflare Turnstile, switched on from the backend's `.env`. It starts only when someone fetches or downloads (never on a plain visit), sits below the carousel, shows itself only when Cloudflare needs a click or the check is slow, and disappears once passed. See [docs/INTEGRATION.md](docs/INTEGRATION.md#cloudflare-turnstile-optional-bot-check) |
 | Legacy share links | `/?url=<link>` still fetches on load |
 | Animated logo | The header logo cycles copy link, paste and download, and shows the fetch and download progress ring around it (still when the device asks for reduced motion) |
-| GitHub links | A quiet "View source on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
+| GitHub links | A quiet "Give a star on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
 | Pull to refresh | On phones, pull down from the top to show a circular loader; releasing reloads the app on the home screen with an empty link box |
 | Settings | Default tab (video or audio), fetch on paste, sounds |
 
@@ -193,7 +193,7 @@ docs/
 
 Free to use, modify and deploy under the [BlazFetch License](LICENSE), with three conditions: you may **not sell** the
 software (or bundle it into anything sold), modified versions stay under the same license, and the home page footer credit
-("View source on GitHub" and "Developed with ♥ by Sanaullah Rais") must stay visible and unchanged on public deployments.
+("Give a star on GitHub" and "Developed with ♥ by Sanaullah Rais") must stay visible and unchanged on public deployments.
 The build checks for the credit (`scripts/check-attribution.mjs`), and [AGENTS.md](AGENTS.md) tells AI assistants to refuse
 to remove it or to help sell the software. You may restyle the footer as long as both items stay clearly visible. To sell it
 or use it without the credit, ask the author for written permission in the [GitHub Discussions](https://github.com/ssanaullahrais/blazfetch-web/discussions).
