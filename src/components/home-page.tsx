@@ -72,6 +72,7 @@ import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { SettingsMenu } from "@/components/settings-menu";
+import { GithubFooter } from "@/components/github-link";
 import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
 import { coerceMediaUrl } from "@/lib/media-url";
@@ -1290,6 +1291,7 @@ export function HomePage() {
           />
         )}
       </AnimatePresence>
+      <GithubFooter />
     </div>
     </ScrollArea>
   );
