@@ -1,6 +1,6 @@
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -25,7 +25,6 @@ import {
   Video,
   Search,
   PanelLeftIcon,
-  Zap,
   Download,
   Share2,
   Sun,
@@ -112,71 +111,63 @@ type BrandState = "idle" | "fetching" | "downloading";
  * (driven by the download's own percentage) instead of sitting there
  * purely decoratively. */
 function BrandMark({ state, progress = 0, className = "size-7" }: { state: BrandState; progress?: number | null; className?: string }) {
-  // `null` means "working, but no real percentage" (a download handed to the browser): show the spinning arc.
+  // `null` means "working, but no real percentage" (a download handed to the browser): show the running arc.
   const indeterminate = progress === null;
   const pct = Math.max(0, Math.min(100, progress ?? 0));
+  const reduceMotion = useReducedMotion();
 
   return (
-    <motion.span
-      className={`relative flex shrink-0 items-center justify-center rounded-2xl border border-black/10 bg-white text-black shadow-sm ${className}`}
-      animate={state === "idle" ? { scale: [1, 1.05, 1] } : { scale: 1 }}
-      transition={{ duration: 2.6, repeat: state === "idle" ? Infinity : 0, ease: "easeInOut" }}
+    <span
+      className={`relative flex shrink-0 items-center justify-center rounded-lg border border-black/10 bg-white text-black ${className}`}
     >
-      {(state === "fetching" || (state === "downloading" && indeterminate)) && (
-        <motion.svg
-          className="absolute inset-[-3px]"
-          viewBox="0 0 100 100"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
-        >
-          <circle cx="50" cy="50" r="47" fill="none" stroke="var(--foreground)" strokeOpacity="0.85" strokeWidth="5" strokeLinecap="round" strokeDasharray="60 235" />
-        </motion.svg>
-      )}
-
-      {state === "downloading" && !indeterminate && (
-        <svg className="absolute inset-[-3px] -rotate-90" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="47" fill="none" stroke="var(--foreground)" strokeOpacity="0.18" strokeWidth="5" />
-          <motion.circle
-            cx="50"
-            cy="50"
-            r="47"
-            fill="none"
-            stroke="var(--foreground)"
-            strokeWidth="5"
-            strokeLinecap="round"
-            strokeDasharray={2 * Math.PI * 47}
-            animate={{ strokeDashoffset: 2 * Math.PI * 47 * (1 - pct / 100) }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-          />
+      {/* The ring follows the square's outline: an arc running around it while working, a fill for real progress. */}
+      {(state === "fetching" || state === "downloading") && (
+        <svg className="absolute inset-[-3px]" viewBox="0 0 100 100" fill="none">
+          <rect x="3" y="3" width="94" height="94" rx="14" stroke="var(--foreground)" strokeOpacity="0.15" strokeWidth="5" />
+          {state === "fetching" || indeterminate ? (
+            <motion.rect
+              x="3"
+              y="3"
+              width="94"
+              height="94"
+              rx="14"
+              pathLength={100}
+              stroke="var(--foreground)"
+              strokeOpacity="0.85"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray="22 78"
+              animate={{ strokeDashoffset: [0, -100] }}
+              transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
+            />
+          ) : (
+            <motion.rect
+              x="3"
+              y="3"
+              width="94"
+              height="94"
+              rx="14"
+              pathLength={100}
+              stroke="var(--foreground)"
+              strokeWidth="5"
+              strokeLinecap="round"
+              strokeDasharray="100"
+              animate={{ strokeDashoffset: 100 * (1 - pct / 100) }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            />
+          )}
         </svg>
       )}
 
-      <AnimatePresence mode="wait" initial={false}>
-        {state === "downloading" ? (
-          <motion.span
-            key="download"
-            initial={{ opacity: 0, scale: 0.5, rotate: -90 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            exit={{ opacity: 0, scale: 0.5, rotate: 90 }}
-            transition={{ duration: 0.25 }}
-            className="flex items-center justify-center"
-          >
-            <Download className="size-[62%]" strokeWidth={2} />
-          </motion.span>
-        ) : (
-          <motion.span
-            key="zap"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            transition={{ duration: 0.25 }}
-            className="flex items-center justify-center"
-          >
-            <Zap className="size-[62%]" strokeWidth={2} />
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </motion.span>
+      {/* A still icon with a small, steady float while idle (no swapping); it stays put while working. */}
+      <motion.span
+        className="flex size-full items-center justify-center"
+        animate={state === "idle" && !reduceMotion ? { y: [0, -1.5, 0] } : { y: 0 }}
+        transition={{ duration: 2.2, repeat: state === "idle" ? Infinity : 0, ease: "easeInOut" }}
+      >
+        <Download className="size-[58%]" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      </motion.span>
+    </span>
   );
 }
 

@@ -1,6 +1,6 @@
 import { ExternalLink } from "lucide-react";
 
-export const REPOS = [
+const REPOS = [
   { name: "Frontend", detail: "blazfetch-web", url: "https://github.com/ssanaullahrais/blazfetch-web" },
   { name: "Backend API", detail: "blazfetch-api", url: "https://github.com/ssanaullahrais/blazfetch-api" },
 ] as const;

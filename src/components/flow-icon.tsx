@@ -1,15 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { ClipboardPaste, Download, Link2 } from "lucide-react";
-
-// The whole product in three steps: copy a link, paste it, download.
-const STEPS = [
-  { Icon: Link2, label: "Copy link", radius: 12 },
-  { Icon: ClipboardPaste, label: "Paste", radius: 20 },
-  { Icon: Download, label: "Download", radius: 8 },
-] as const;
-
-const STEP_MS = 1500;
+import { FLOW_STEPS, FLOW_STEP_MS } from "@/lib/flow-steps";
 
 /** Animated mark beside the heading: cycles copy link, paste and download, in the same ink as the wordmark. */
 export function FlowIcon({ className }: { className?: string }) {
@@ -18,11 +9,11 @@ export function FlowIcon({ className }: { className?: string }) {
 
   useEffect(() => {
     if (reduceMotion) return;
-    const timer = window.setInterval(() => setStep((s) => (s + 1) % STEPS.length), STEP_MS);
+    const timer = window.setInterval(() => setStep((s) => (s + 1) % FLOW_STEPS.length), FLOW_STEP_MS);
     return () => window.clearInterval(timer);
   }, [reduceMotion]);
 
-  const { Icon, label, radius } = STEPS[step];
+  const { Icon, label, radius } = FLOW_STEPS[step];
   return (
     // The box and its icon pop in together on every step, and the box changes its corner radius as it goes.
     <motion.span
