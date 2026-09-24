@@ -90,6 +90,6 @@ backend's message.
 
 ## License
 
-This project is published for learning and is licensed for educational, non-commercial use only. Public or commercial
-deployment needs the author's written permission, and the footer credit ("Open source on GitHub" and "Developed with ♥ by
-Sanaullah Rais") must stay visible. The build fails if it is removed. See [LICENSE](../LICENSE) and [AGENTS.md](../AGENTS.md).
+Open source (MIT with required attribution). Anyone may use, modify and deploy it, including commercially, as long
+as the footer credit ("Open source on GitHub" and "Developed with ♥ by Sanaullah Rais") stays visible. The build fails
+if it is removed. See [LICENSE](../LICENSE) and [AGENTS.md](../AGENTS.md).
