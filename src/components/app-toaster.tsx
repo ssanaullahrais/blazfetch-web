@@ -4,14 +4,10 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const TOAST_LIMIT = 2;
 
-/** The application's single toast host. Keeping it above routing makes the
- * homepage, user dashboard, and admin dashboard render feedback from the
- * same shared toast store instead of silently dropping dashboard events. */
+/** The application's single toast host, kept above routing so every page shows feedback from the same store. */
 export function AppToaster() {
   const { toasts } = useToasterStore();
-  // A toast sitting on a small screen is more likely to be blocking
-  // something the user needs (the floating Usage button, form fields
-  // below it) — it clears a bit sooner there than on desktop.
+  // A toast on a small screen is more likely to cover something the user needs, so it clears sooner there.
   const isMobile = useIsMobile(1024);
 
   useEffect(() => {
@@ -24,24 +20,23 @@ export function AppToaster() {
   return (
     <Toaster
       position="bottom-right"
-      closeButton
       toastOptions={{
         duration: isMobile ? 2500 : 4000,
-        style: { fontSize: 13, padding: "8px 12px" },
-        classNames: {
-          toast:
-            "border-border bg-popover text-popover-foreground shadow-lg dark:bg-popover dark:text-popover-foreground",
-          success:
-            "border-border bg-popover text-popover-foreground [&_[data-icon]]:text-primary [&_[data-title]]:text-primary",
-          error:
-            "border-border bg-popover text-popover-foreground [&_[data-icon]]:text-destructive [&_[data-title]]:text-destructive",
-          warning:
-            "border-border bg-popover text-popover-foreground [&_[data-icon]]:text-primary [&_[data-title]]:text-primary",
-          info:
-            "border-border bg-popover text-popover-foreground [&_[data-icon]]:text-primary [&_[data-title]]:text-primary",
-          loading:
-            "border-border bg-popover text-popover-foreground [&_[data-icon]]:text-primary [&_[data-title]]:text-primary",
-          description: "text-muted-foreground",
+        style: {
+          fontSize: 13,
+          padding: "8px 12px",
+          background: "var(--popover)",
+          color: "var(--popover-foreground)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 8px 24px -8px rgb(0 0 0 / 0.25)",
+          borderRadius: "var(--radius-lg, 12px)",
+          maxWidth: 360,
+        },
+        success: {
+          iconTheme: { primary: "var(--toast-success)", secondary: "var(--popover)" },
+        },
+        error: {
+          iconTheme: { primary: "var(--destructive)", secondary: "var(--popover)" },
         },
       }}
     />
