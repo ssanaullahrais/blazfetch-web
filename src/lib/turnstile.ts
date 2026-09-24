@@ -76,6 +76,12 @@ export async function submitToken(token: string): Promise<void> {
   }
 }
 
+/** The widget itself failed (blocked, offline, wrong domain): let the visitor retry. */
+export function markCheckFailed(): void {
+  if (state.status === "off" || state.status === "unknown") return;
+  set({ status: "error" });
+}
+
 /** The pass is gone (expired or refused). The check only runs again when the visitor next does something that needs it. */
 export function markPassLost(): void {
   if (state.status === "off" || state.status === "unknown") return;
@@ -95,6 +101,10 @@ export async function waitForPass(): Promise<void> {
         clearTimeout(timer);
         listeners.delete(check);
         resolve();
+      } else if (state.status === "error") {
+        clearTimeout(timer);
+        listeners.delete(check);
+        reject(new ApiError("TURNSTILE_FAILED", "The security check could not be completed. Please try again."));
       }
     };
     const timer = setTimeout(() => {
