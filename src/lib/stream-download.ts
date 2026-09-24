@@ -2,6 +2,7 @@ import { API_BASE, getDownloadFilename } from "@/lib/api";
 import { ApiError, apiErrorFromBody, parseErrorFromText } from "@/lib/errors";
 import { coerceMediaUrl } from "@/lib/media-url";
 import { markPassLost, waitForPass } from "@/lib/turnstile";
+import { notifyStatsChanged } from "@/lib/stats-events";
 
 /**
  * How the backend delivers a file (GET /api/v1/stream?mode=...):
@@ -247,7 +248,9 @@ export async function startBrowserDownload(params: StreamParams, options: StartO
   if (options.env) return startBrowserDownloadNow(params, options); // tests drive the browser stand-in directly
   await waitForPass();
   try {
-    return await startBrowserDownloadNow(params, options);
+    const started = await startBrowserDownloadNow(params, options);
+    notifyStatsChanged();
+    return started;
   } catch (err) {
     if (err instanceof ApiError && err.code === "TURNSTILE_REQUIRED") {
       markPassLost();
