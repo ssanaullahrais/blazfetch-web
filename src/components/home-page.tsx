@@ -335,6 +335,8 @@ export function HomePage() {
     if (data.type === "images") setActiveTab("images");
     else if (data.type === "carousel") setActiveTab(data.carouselVideos?.length ? "video" : "images");
     else if (data.audioOnly) setActiveTab("audio");
+    // Any other result: pick a tab that has content, never keep the previous result's tab (it could be empty).
+    else setActiveTab(prefs.defaultMode === "audio" && data.audioFormats.length ? "audio" : "video");
     // The address bar becomes the stable page path (/youtube/<id>), so copying it shares this video.
     if (!opts.keepAddress) {
       window.history.replaceState(null, "", data.stored?.path ?? `/?url=${encodeURIComponent(sourceUrl)}`);
@@ -1039,15 +1041,15 @@ export function HomePage() {
                         .filter(Boolean)
                         .join(" · ")}
               </p>
-              {info.webpage_url && (
-                <Button variant="ghost" size="sm" asChild className="mt-1 h-6 w-fit gap-1 px-2 text-xs text-muted-foreground">
-                  <a href={info.webpage_url} target="_blank" rel="noopener noreferrer">
-                    {detectPlatformLabel(info.webpage_url)}
-                    <ExternalLink className="size-3" />
-                  </a>
-                </Button>
-              )}
-              <div className="flex flex-wrap items-center gap-1">
+              <div className="mt-1 flex flex-wrap items-center gap-1">
+                {info.webpage_url && (
+                  <Button variant="ghost" size="sm" asChild className="h-6 w-fit gap-1 px-2 text-xs text-muted-foreground">
+                    <a href={info.webpage_url} target="_blank" rel="noopener noreferrer">
+                      {detectPlatformLabel(info.webpage_url)}
+                      <ExternalLink className="size-3" />
+                    </a>
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1081,8 +1083,9 @@ export function HomePage() {
                       </Badge>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-56">
-                      The main source is blocking us right now, so this uses a backup. Quality can be lower (usually up to
-                      720p).
+                      {info.type === "video" || info.type === "playlist"
+                        ? "The main source is blocking us right now, so this uses a backup. Quality can be lower (usually up to 720p)."
+                        : "The main source is blocking us right now, so this came from a backup. Some details may be missing."}
                     </TooltipContent>
                   </Tooltip>
                 )}

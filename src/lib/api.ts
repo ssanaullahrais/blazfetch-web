@@ -270,6 +270,25 @@ export function dedupeVideoFormats(formats: ApiFormat[]): MediaFormat[] {
   return out;
 }
 
+const PLATFORM_NAMES: Record<string, string> = {
+  youtube: "YouTube", tiktok: "TikTok", instagram: "Instagram", twitter: "X", x: "X", facebook: "Facebook", reddit: "Reddit",
+  vimeo: "Vimeo", dailymotion: "Dailymotion", bluesky: "Bluesky", streamable: "Streamable", rutube: "Rutube",
+  soundcloud: "SoundCloud", snapchat: "Snapchat", twitch: "Twitch", pinterest: "Pinterest", loom: "Loom",
+  newgrounds: "Newgrounds", tumblr: "Tumblr",
+};
+
+/** "Instagram Images", "Instagram Videos" or "Instagram Images & Videos" for media that has no title of its own. */
+export function fallbackTitle(info: Pick<MediaInfo, "extractor" | "type" | "images" | "carouselVideos" | "audioOnly">): string {
+  const platform = PLATFORM_NAMES[(info.extractor ?? "").toLowerCase()] ?? (info.extractor ? info.extractor[0].toUpperCase() + info.extractor.slice(1) : "Media");
+  const images = info.images?.length ?? 0;
+  const videos = info.carouselVideos?.length ?? (info.type === "video" ? 1 : 0);
+  if (info.audioOnly) return `${platform} Audio`;
+  if (images && videos) return `${platform} Images & Videos`;
+  if (images) return `${platform} ${images === 1 ? "Image" : "Images"}`;
+  if (videos > 1) return `${platform} Videos`;
+  return `${platform} Video`;
+}
+
 function toStoredSummary(stored: ApiStored | undefined): StoredSummary | null {
   if (!stored) return null;
   return {
@@ -286,6 +305,12 @@ function toStoredSummary(stored: ApiStored | undefined): StoredSummary | null {
 
 /** Turns any backend fetch/media response into the model the UI renders. */
 export function toMediaInfo(data: ApiFetchResponse): MediaInfo {
+  const info = toMediaInfoRaw(data);
+  if (!info.title || /^untitled$/i.test(info.title.trim())) info.title = fallbackTitle(info);
+  return info;
+}
+
+function toMediaInfoRaw(data: ApiFetchResponse): MediaInfo {
   const base = {
     id: data.mediaId ?? null,
     title: data.title ?? data.playlist?.title ?? "Untitled",
