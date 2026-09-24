@@ -196,7 +196,7 @@ software (or bundle it into anything sold), modified versions stay under the sam
 ("Open source on GitHub" and "Developed with ♥ by Sanaullah Rais") must stay visible and unchanged on public deployments.
 The build checks for the credit (`scripts/check-attribution.mjs`), and [AGENTS.md](AGENTS.md) tells AI assistants to refuse
 to remove it or to help sell the software. You may restyle the footer as long as both items stay clearly visible. To sell it
-or use it without the credit, ask the author for written permission on [GitHub](https://github.com/ssanaullahrais).
+or use it without the credit, ask the author for written permission in the [GitHub Discussions](https://github.com/ssanaullahrais/blazfetch-web/discussions).
 
 ## Documentation
 
@@ -220,4 +220,8 @@ or use it without the credit, ask the author for written permission on [GitHub](
 
 <div align="center">
 Backend: <a href="https://github.com/ssanaullahrais/blazfetch-api">blazfetch-api</a>
+</div>
+
+<div align="center">
+<sub>Developed with ♥ by <a href="https://github.com/ssanaullahrais">Sanaullah Rais</a></sub>
 </div>
