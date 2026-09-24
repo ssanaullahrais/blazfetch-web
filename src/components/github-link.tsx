@@ -14,26 +14,20 @@ function GithubMark({ className }: { className?: string }) {
   );
 }
 
-/** Quiet footer line at the bottom of the home page, linking the frontend and backend repositories. */
+/** One quiet footer link. It opens the project's main repository, whose README links the backend too. */
 export function GithubFooter() {
   return (
-    <footer className="absolute inset-x-0 bottom-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-4 text-xs text-muted-foreground">
-      <span className="inline-flex items-center gap-1.5">
+    <footer className="absolute inset-x-0 bottom-4 flex justify-center px-4 text-xs text-muted-foreground">
+      <a
+        href={REPOS[0].url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-foreground hover:underline"
+      >
         <GithubMark className="size-3.5" />
-        Open source
-      </span>
-      {REPOS.map((repo) => (
-        <a
-          key={repo.url}
-          href={repo.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 underline-offset-4 transition hover:text-foreground hover:underline"
-        >
-          {repo.name}
-          <ExternalLink className="size-3" />
-        </a>
-      ))}
+        Open source on GitHub
+        <ExternalLink className="size-3" />
+      </a>
     </footer>
   );
 }
