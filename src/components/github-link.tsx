@@ -1,4 +1,4 @@
-import { ExternalLink, Heart } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 
 export const REPOS = [
   { name: "Frontend", detail: "blazfetch-web", url: "https://github.com/ssanaullahrais/blazfetch-web" },
@@ -14,12 +14,38 @@ function GithubMark({ className }: { className?: string }) {
   );
 }
 
+/** An 8-bit heart drawn from square pixels, blinking in two steps like an old arcade game. */
+function PixelHeart() {
+  const pixels = [
+    [1, 0], [2, 0], [4, 0], [5, 0],
+    [0, 1], [1, 1], [2, 1], [3, 1], [4, 1], [5, 1], [6, 1],
+    [0, 2], [1, 2], [2, 2], [3, 2], [4, 2], [5, 2], [6, 2],
+    [1, 3], [2, 3], [3, 3], [4, 3], [5, 3],
+    [2, 4], [3, 4], [4, 4],
+    [3, 5],
+  ];
+  return (
+    <svg
+      viewBox="0 0 7 6"
+      className="size-3.5 animate-[pulse_1.2s_steps(2,end)_infinite] text-red-500"
+      fill="currentColor"
+      shapeRendering="crispEdges"
+      role="img"
+      aria-label="love"
+    >
+      {pixels.map(([x, y]) => (
+        <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" />
+      ))}
+    </svg>
+  );
+}
+
 /** Footer that mirrors the header: the GitHub link on the left edge, the credit on the right edge. It opens the
  * project's main repository, whose README links the backend too. */
 export function GithubFooter() {
   return (
     <footer className="absolute inset-x-0 bottom-0 text-xs text-muted-foreground">
-      <div className="mx-auto flex w-full max-w-[1340px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-4">
+      <div className="mx-auto flex w-full max-w-[1340px] flex-col items-center gap-1 px-4 py-4 sm:flex-row sm:justify-between sm:gap-x-4">
         <a
           href={REPOS[0].url}
           target="_blank"
@@ -31,7 +57,7 @@ export function GithubFooter() {
           <ExternalLink className="size-3" />
         </a>
         <p className="inline-flex items-center gap-1">
-          Developed with <Heart className="size-3 fill-red-500 text-red-500" aria-label="love" /> by BlazTools
+          Developed with <PixelHeart /> BlazTools
         </p>
       </div>
     </footer>
