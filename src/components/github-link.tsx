@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { formatCount, useSiteStats } from "@/lib/site-stats";
 
 const REPOS = [
   { name: "Frontend", detail: "blazfetch-web", url: "https://github.com/ssanaullahrais/blazfetch-web" },
@@ -43,6 +44,7 @@ function PixelHeart() {
 /** Centered footer: the GitHub link and the credit, side by side with a separator on wide screens and stacked on phones. It opens the
  * project's main repository, whose README links the backend too. */
 export function GithubFooter() {
+  const stats = useSiteStats();
   return (
     <footer className="absolute inset-x-0 bottom-0 text-xs text-muted-foreground">
       <div className="mx-auto flex w-full max-w-[1340px] flex-col items-center justify-center gap-1 px-4 py-4 sm:flex-row sm:gap-x-3">
@@ -60,6 +62,14 @@ export function GithubFooter() {
         <p className="inline-flex items-center gap-1">
           Developed with <PixelHeart /> by Sanaullah Rais
         </p>
+        {stats && (
+          <>
+            <span aria-hidden className="hidden text-muted-foreground/50 sm:inline">|</span>
+            <p title={`${stats.fetches.toLocaleString()} fetches and ${stats.downloads.toLocaleString()} downloads so far`}>
+              {formatCount(stats.fetches)} fetches <span aria-hidden>·</span> {formatCount(stats.downloads)} downloads
+            </p>
+          </>
+        )}
       </div>
     </footer>
   );
