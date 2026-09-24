@@ -991,7 +991,7 @@ export function HomePage() {
           disabled={loading}
         >
           {loading ? <Loader2 className="animate-spin" /> : url.trim() ? <Search /> : <ClipboardPaste />}
-          <span>{url.trim() ? "Fetch" : "Paste & Fetch"}</span>
+          <span>{url.trim() ? "Fetch" : info || unavailable ? "Paste Another" : "Paste & Fetch"}</span>
         </Button>
       </motion.div>
 
