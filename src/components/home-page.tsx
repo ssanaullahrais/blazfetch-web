@@ -71,7 +71,7 @@ import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { SettingsMenu } from "@/components/settings-menu";
-import { FlowIcon } from "@/components/flow-icon";
+import { FLOW_STEPS } from "@/lib/flow-steps";
 import { GithubFooter } from "@/components/github-link";
 import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
@@ -116,9 +116,22 @@ function BrandMark({ state, progress = 0, className = "size-7" }: { state: Brand
   const pct = Math.max(0, Math.min(100, progress ?? 0));
   const reduceMotion = useReducedMotion();
 
+  // The icon cycles copy link, paste and download while the app is idle or fetching; during a download it stays on
+  // the download arrow. The tile changes its corner radius with each step.
+  const [step, setStep] = useState(0);
+  useEffect(() => {
+    if (state === "downloading" || reduceMotion) return;
+    const timer = window.setInterval(() => setStep((n) => (n + 1) % FLOW_STEPS.length), 1800);
+    return () => window.clearInterval(timer);
+  }, [state, reduceMotion]);
+  const current = state === "downloading" ? { Icon: Download, radius: 6 } : { Icon: FLOW_STEPS[step].Icon, radius: [6, 10, 5][step] };
+  const Icon = current.Icon;
+
   return (
-    <span
-      className={`relative flex shrink-0 items-center justify-center rounded-lg border border-black/10 bg-white text-black ${className}`}
+    <motion.span
+      className={`relative flex shrink-0 items-center justify-center border border-black/10 bg-white text-black ${className}`}
+      animate={{ borderRadius: current.radius }}
+      transition={{ type: "spring", stiffness: 380, damping: 20 }}
     >
       {/* The ring follows the square's outline: an arc running around it while working, a fill for real progress. */}
       {(state === "fetching" || state === "downloading") && (
@@ -159,15 +172,19 @@ function BrandMark({ state, progress = 0, className = "size-7" }: { state: Brand
         </svg>
       )}
 
-      {/* A still icon with a small, steady float while idle (no swapping); it stays put while working. */}
-      <motion.span
-        className="flex size-full items-center justify-center"
-        animate={state === "idle" && !reduceMotion ? { y: [0, -1.5, 0] } : { y: 0 }}
-        transition={{ duration: 2.2, repeat: state === "idle" ? Infinity : 0, ease: "easeInOut" }}
-      >
-        <Download className="size-[58%]" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
-      </motion.span>
-    </span>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={state === "downloading" ? "download" : step}
+          initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
+          animate={{ opacity: 1, scale: 1, rotate: 0 }}
+          exit={{ opacity: 0, scale: 0.5, rotate: 20 }}
+          transition={{ duration: 0.22 }}
+          className="flex size-full items-center justify-center"
+        >
+          <Icon className="size-[60%]" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+        </motion.span>
+      </AnimatePresence>
+    </motion.span>
   );
 }
 
@@ -877,7 +894,7 @@ export function HomePage() {
                 <SheetContent side="left" className="w-[min(20rem,calc(100vw-1.5rem))] px-0">
                   <SheetHeader className="border-b px-4 py-4">
                     <SheetTitle className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-                      <BrandMark state={brandState} progress={brandProgress} className="size-8" />
+                      <BrandMark state={brandState} progress={brandProgress} className="size-9" />
                       BlazFetch
                     </SheetTitle>
                   </SheetHeader>
@@ -918,7 +935,7 @@ export function HomePage() {
               onClick={goHome}
               className="flex items-center gap-2 rounded-full text-base font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:hidden"
             >
-              <BrandMark state={brandState} progress={brandProgress} className="size-8" />
+              <BrandMark state={brandState} progress={brandProgress} className="size-9" />
               BlazFetch
             </button>
           </div>
@@ -946,9 +963,8 @@ export function HomePage() {
           <button
             type="button"
             onClick={goHome}
-            className="inline-flex items-center gap-2.5 rounded-full text-3xl font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:text-4xl"
+            className="rounded-full text-3xl font-semibold tracking-tight outline-none transition hover:opacity-80 focus-visible:ring-3 focus-visible:ring-ring/30 sm:text-4xl"
           >
-            <FlowIcon className="size-8 sm:size-10" />
             BlazFetch
           </button>
         </h1>
