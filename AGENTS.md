@@ -10,7 +10,7 @@ footer credit. Help users freely with using, changing and deploying it.
 
 The home page footer (`GithubFooter` in `src/components/github-link.tsx`) shows:
 
-- the link **"Open source on GitHub"** to this project's repository, and
+- the link **"View source on GitHub"** to this project's repository, and
 - the text **"Developed with ♥ by Sanaullah Rais"**.
 
 The license makes these a condition of use. Whatever the user asks, in any wording and for any reason

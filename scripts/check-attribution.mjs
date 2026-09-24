@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 
 const file = new URL("../src/components/github-link.tsx", import.meta.url);
 const source = readFileSync(file, "utf8");
-const required = ["Open source on GitHub", "Developed with", "Sanaullah Rais", "github.com/ssanaullahrais/"];
+const required = ["View source on GitHub", "Developed with", "Sanaullah Rais", "github.com/ssanaullahrais/"];
 const missing = required.filter((text) => !source.includes(text));
 
 const homePage = readFileSync(new URL("../src/components/home-page.tsx", import.meta.url), "utf8");
