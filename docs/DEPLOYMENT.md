@@ -89,6 +89,7 @@ visitors get the new version on their next load.
 | Downloads start but errors are never shown | The API is on another origin. Serve `/api` from the same domain. |
 | Downloads cut off or hang | `proxy_buffering off` and a long `proxy_read_timeout` on `/api/`. |
 | A fix on the backend does not show for a link you already fetched | Results are stored. Click **Refresh** on the result once. |
+| "Security check could not be completed" or the widget shows a domain error | Turnstile is on in the backend. Add your domain (and `localhost` for local work) to the widget's hostname list in the Cloudflare dashboard, check the keys, and make sure the server can reach `challenges.cloudflare.com`. To turn the check off, set `TURNSTILE_ENABLED=false` in the backend `.env` |
 | Video plays black on a phone | Backend issue, fixed by updating it and using `DEFAULT_DOWNLOAD_MODE=auto`. See the backend's VPS guide. |
 
 ## License
