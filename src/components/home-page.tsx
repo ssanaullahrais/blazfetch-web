@@ -1521,6 +1521,37 @@ function sanitizeFilenameLocal(name: string) {
   return cleaned.slice(0, 100).trim() || "download";
 }
 
+/** Smallest file size first — an unknown size (yt-dlp can't always report one up front for DASH/fragmented
+ * formats) sorts last either way, since there's nothing to rank it against. See Preferences > "Sort video by
+ * smallest file size" in settings-menu.tsx. */
+function sortVideoBySize(formats: MediaFormat[]): MediaFormat[] {
+  return [...formats].sort((a, b) => {
+    if (a.filesize == null && b.filesize == null) return 0;
+    if (a.filesize == null) return 1;
+    if (b.filesize == null) return -1;
+    return a.filesize - b.filesize;
+  });
+}
+
+const LARGE_FILE_BYTES = 200 * 1024 * 1024;
+
+/** True when a format is large enough to warrant the "this will take a while" heads-up. yt-dlp doesn't
+ * always report an exact size up front — when it hasn't, fall back to the same quality tier its own badge
+ * already shows: "top" (2K/4K) is large enough in practice either way. */
+function isLikelyLargeFile(format: MediaFormat): boolean {
+  if (format.filesize != null) return format.filesize >= LARGE_FILE_BYTES;
+  return videoQualityBadge(format.height).tier === "top";
+}
+
+function warnIfLargeFile(format: MediaFormat): void {
+  if (!isLikelyLargeFile(format)) return;
+  const size = sizeLabelFor(format.filesize);
+  toast(`Large file${size ? ` (${size})` : ""} — this may take a while to prepare. Please be patient.`, {
+    icon: "⏳",
+    duration: 6000,
+  });
+}
+
 function VideoFormatList({
   info,
   prefs,
@@ -1552,6 +1583,13 @@ function VideoFormatList({
       resolution: f?.resolution ?? null,
       vcodec: f?.vcodec ?? null,
     })}.mp4`;
+  // The "★ Best" badge always marks the true highest-quality pick (info.videoFormats' own first entry,
+  // its default order), regardless of the size sort below reordering what's displayed underneath it.
+  const bestFormatId = info.videoFormats[0]?.format_id;
+  // bestOnly (auto-download-best) always means the true best quality pick, whatever the display sort below
+  // would otherwise put first — the two preferences are about different things and shouldn't fight.
+  const listedFormats =
+    prefs.sortVideoBySmallestSize && !bestOnly ? sortVideoBySize(info.videoFormats) : info.videoFormats;
 
   return (
     <>
@@ -1566,7 +1604,7 @@ function VideoFormatList({
           }
         />
       )}
-      {info.videoFormats.slice(0, bestOnly ? 1 : 8).map((f, i) => {
+      {listedFormats.slice(0, bestOnly ? 1 : 8).map((f) => {
         const resLabel = f.resolution ?? f.note ?? f.ext;
         const key = keyFor("video", f.format_id);
         const sizeLabel = sizeLabelFor(f.filesize);
@@ -1578,7 +1616,7 @@ function VideoFormatList({
           sizeLabel={sizeLabel}
           quality={videoQualityBadge(f.height)}
           format={f}
-          best={i === 0}
+          best={f.format_id === bestFormatId}
           mediaType="video"
           status={downloadStatus[key]}
           onDownload={() =>
@@ -1586,7 +1624,10 @@ function VideoFormatList({
               "video",
               key,
               downloadStatus[key],
-              () => runDownload("video", f.format_id, undefined, f),
+              () => {
+                warnIfLargeFile(f);
+                runDownload("video", f.format_id, undefined, f);
+              },
               sizeLabel
             )
           }
