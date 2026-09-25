@@ -20,7 +20,7 @@ export type Preferences = {
    * playable format at the top. */
   sortAudioByCompatibility: boolean;
   /** Off (default): the video tab sorts by quality, highest resolution first (unaffected by this setting).
-   * On: smallest file size first — an unknown size (yt-dlp can't always report one up front) sorts last
+   * On: the same rows, smallest file size first — an unknown size (yt-dlp can't always report one up front) sorts last
    * either way. "Best quality" still always means the true highest-resolution pick, whichever is on top. */
   sortVideoBySmallestSize: boolean;
 };
