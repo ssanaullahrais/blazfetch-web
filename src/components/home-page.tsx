@@ -77,7 +77,7 @@ import { site } from "@/config/site";
 import { safeHref } from "@/lib/safe-url";
 import { applySeo } from "@/lib/seo";
 import { TurnstileWidget } from "@/components/turnstile-widget";
-import { GithubFooter } from "@/components/github-link";
+import { API_DOCS_URL, GithubFooter, GithubMark, REPOS } from "@/components/github-link";
 import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
 import { coerceMediaUrl } from "@/lib/media-url";
@@ -937,11 +937,11 @@ export function HomePage() {
         onConfirmStop={() => confirmState && cancelDownload(confirmState.mode, confirmState.key)}
       />
 
-      {/* Overlay header, full-bleed bar with a centered 1340px container.
+      {/* Overlay header, full-bleed bar with a centered max-w-7xl container.
           Core status/action icons stay inline at every size; the small-screen
           menu is only for secondary actions so it does not feel empty. */}
       <div className="absolute inset-x-0 top-0 z-30">
-        <div className="mx-auto flex w-full max-w-[1340px] items-center justify-between gap-2 px-4 py-4">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-2 px-4 py-4">
           <div className="flex items-center gap-3">
             {/* Desktop-only wordmark, left of the action row — BrandMark
                 doubles as a live status indicator (idle glow / fetching
@@ -997,6 +997,35 @@ export function HomePage() {
                         {isDarkTheme ? <Moon className="size-4" /> : <Sun className="size-4" />}
                       </span>
                     </button>
+                    <p className="px-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Project</p>
+                    {REPOS.map((repo) => (
+                      <a
+                        key={repo.url}
+                        href={repo.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={MENU_ROW_CLASS}
+                      >
+                        <span className="min-w-0">
+                          <p className="text-sm font-medium">{repo.name.replace(" API", "")} on GitHub</p>
+                          <p className="truncate text-xs text-muted-foreground">
+                            {repo.detail === "blazfetch-web" ? "Give a star, report an issue." : "The API this app runs on."}
+                          </p>
+                        </span>
+                        <span className={MENU_ROW_ICON_CLASS}>
+                          <GithubMark className="size-4" />
+                        </span>
+                      </a>
+                    ))}
+                    <a href={API_DOCS_URL} target="_blank" rel="noopener noreferrer" className={MENU_ROW_CLASS}>
+                      <span className="min-w-0">
+                        <p className="text-sm font-medium">API documentation</p>
+                        <p className="truncate text-xs text-muted-foreground">Every endpoint, with examples.</p>
+                      </span>
+                      <span className={MENU_ROW_ICON_CLASS}>
+                        <ExternalLink className="size-4" />
+                      </span>
+                    </a>
                   </div>
                 </SheetContent>
               </Sheet>
@@ -1752,7 +1781,7 @@ function AudioFormatList({
   // regardless of the compatibility sort below — that toggle only reorders the list underneath.
   const bestAudio = bestAudioFormat(info.audioFormats);
   const bestExt = bestAudio?.ext;
-  const bestLabel = ["Best audio", formatBitrate(bestAudio?.abr), bestExt?.toUpperCase()].filter(Boolean).join(" · ");
+  const bestLabel = ["Best audio", formatBitrate(bestAudio?.abr ?? null), bestExt?.toUpperCase()].filter(Boolean).join(" · ");
   const bestSize = bestAudio ? sizeLabelFor(bestAudio.filesize, bestAudio.filesizeApprox) : undefined;
   const listedFormats = audioRows(info.audioFormats, { byCompatibility: prefs.sortAudioByCompatibility });
 

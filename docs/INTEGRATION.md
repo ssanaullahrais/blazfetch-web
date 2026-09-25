@@ -29,7 +29,7 @@ download manager takes over and nothing is buffered in memory. The backend sets 
 `blazfetch_dl_<token>` once bytes flow; the app polls for it to show "Started". If the frame instead shows a JSON
 error, the app reads it and shows the friendly message. Stop removes the frame, which ends the server's processes.
 The delivery mode comes from Settings: Automatic (`auto`) and Fastest (`stream`) use this request; Compatible
-uses the job flow below. Audio previews use `fetch` and a blob.
+uses the job flow below. Which of them Settings offers is set with `VITE_DOWNLOAD_METHODS` (default: all three). Audio previews use `fetch` and a blob.
 If the API is on another origin the frame cannot be observed, so the app falls back to plain navigation.
 
 Compatible (`POST /download`, the job flow with a real progress bar):

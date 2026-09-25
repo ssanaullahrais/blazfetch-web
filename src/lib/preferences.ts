@@ -39,15 +39,30 @@ const HARDCODED_DEFAULTS: Preferences = {
   sortVideoBySmallestSize: false,
 };
 
-/** Fastest and Compatible are switched off for now: downloads always use Automatic. ("progress" is not
- * offered as a choice in settings at all — same underlying prepare flow as Compatible, just with a progress bar
- * — but the value is kept here so anyone with it already stored from before keeps working.)
- * Build with VITE_ENABLE_DOWNLOAD_METHODS=true to let visitors choose. */
-export const DOWNLOAD_METHODS_SELECTABLE = import.meta.env.VITE_ENABLE_DOWNLOAD_METHODS === "true";
+const ALL_METHODS: DeliveryMode[] = ["auto", "stream", "prepare"];
 
-/** Applies the rule above to the merged preferences. */
+/** Reads VITE_DOWNLOAD_METHODS, a comma-separated list of the methods visitors may use ("auto" = Automatic,
+ * "stream" = Fastest, "prepare" = Compatible), e.g. `auto` to offer only Automatic. Unset means all three.
+ * An unusable value falls back to Automatic alone. The old VITE_ENABLE_DOWNLOAD_METHODS=false still means
+ * Automatic only. ("progress" is not offered as a choice in settings at all — same underlying prepare flow as
+ * Compatible, just with a progress bar — but a stored "progress" keeps working while Compatible is enabled.) */
+export function parseDownloadMethods(list: string | undefined, legacyFlag?: string): DeliveryMode[] {
+  if (!list?.trim()) return legacyFlag === "false" ? ["auto"] : ALL_METHODS;
+  const wanted = list.split(",").map((v) => v.trim().toLowerCase());
+  const picked = ALL_METHODS.filter((m) => wanted.includes(m));
+  return picked.length ? picked : ["auto"];
+}
+
+export const ENABLED_DOWNLOAD_METHODS = parseDownloadMethods(
+  import.meta.env.VITE_DOWNLOAD_METHODS,
+  import.meta.env.VITE_ENABLE_DOWNLOAD_METHODS,
+);
+
+/** Applies the rule above to the merged preferences: a stored method that is switched off becomes the first enabled one. */
 function withMethodRule(prefs: Preferences): Preferences {
-  return DOWNLOAD_METHODS_SELECTABLE ? prefs : { ...prefs, deliveryMode: "auto" };
+  const mode = prefs.deliveryMode;
+  const allowed = mode === "progress" ? ENABLED_DOWNLOAD_METHODS.includes("prepare") : ENABLED_DOWNLOAD_METHODS.includes(mode);
+  return allowed ? prefs : { ...prefs, deliveryMode: ENABLED_DOWNLOAD_METHODS[0] };
 }
 
 const STORAGE_KEY = "media-downloader:preferences";
