@@ -1752,7 +1752,7 @@ function AudioFormatList({
   // regardless of the compatibility sort below — that toggle only reorders the list underneath.
   const bestAudio = bestAudioFormat(info.audioFormats);
   const bestExt = bestAudio?.ext;
-  const bestLabel = ["Best quality audio", formatBitrate(bestAudio?.abr), bestExt?.toUpperCase()].filter(Boolean).join(" · ");
+  const bestLabel = ["Best audio", formatBitrate(bestAudio?.abr), bestExt?.toUpperCase()].filter(Boolean).join(" · ");
   const bestSize = bestAudio ? sizeLabelFor(bestAudio.filesize, bestAudio.filesizeApprox) : undefined;
   const listedFormats = audioRows(info.audioFormats, { byCompatibility: prefs.sortAudioByCompatibility });
 
