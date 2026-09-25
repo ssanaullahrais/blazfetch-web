@@ -277,11 +277,29 @@ function toAudioFormat(f: ApiAudioFormat): MediaFormat {
   };
 }
 
+/**
+ * A format with no reported height (some sources — Instagram's "original quality" link is the common
+ * case — never give one at all) must not always lose to a small format that happens to report one: `?? 0`
+ * would rank a 2 MB 480p file above a 17 MB original just because 480 beats a bare 0. When one side's
+ * height is missing, a file several times the other's size is almost certainly the better pick even
+ * without confirmed dimensions; otherwise trust the side that does report a height, since a small file
+ * claiming to be unrated is more likely a genuinely low-quality one than a hidden gem.
+ */
+const UNKNOWN_HEIGHT_SIZE_ADVANTAGE = 2;
+
+function compareByQuality(a: ApiFormat, b: ApiFormat): number {
+  const heightDiff = (b.height ?? 0) - (a.height ?? 0);
+  if (heightDiff !== 0) {
+    if (a.height == null && (a.filesizeBytes ?? 0) > (b.filesizeBytes ?? 0) * UNKNOWN_HEIGHT_SIZE_ADVANTAGE) return -1;
+    if (b.height == null && (b.filesizeBytes ?? 0) > (a.filesizeBytes ?? 0) * UNKNOWN_HEIGHT_SIZE_ADVANTAGE) return 1;
+    return heightDiff;
+  }
+  return Number(b.compatible) - Number(a.compatible) || (b.fps ?? 0) - (a.fps ?? 0) || (b.filesizeBytes ?? 0) - (a.filesizeBytes ?? 0);
+}
+
 /** Highest resolution first; one row per resolution+container, preferring browser-compatible ones. */
 export function dedupeVideoFormats(formats: ApiFormat[]): MediaFormat[] {
-  const sorted = [...formats].sort(
-    (a, b) => (b.height ?? 0) - (a.height ?? 0) || Number(b.compatible) - Number(a.compatible) || (b.fps ?? 0) - (a.fps ?? 0)
-  );
+  const sorted = [...formats].sort(compareByQuality);
   const seen = new Set<string>();
   const out: MediaFormat[] = [];
   for (const f of sorted) {
