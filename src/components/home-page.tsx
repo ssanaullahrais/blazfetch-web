@@ -713,7 +713,7 @@ export function HomePage() {
         return;
       }
       userStoppedKeys.delete(key);
-      reportDownloadError(err, urlOverride ?? fetchedUrl, prefs.soundEnabled);
+      reportDownloadError(err, urlOverride ?? fetchedUrl, prefs.soundEnabled, "Download", undefined, mode);
       clearState();
     }
   }
@@ -811,7 +811,7 @@ export function HomePage() {
         clearDownloadState(key);
         return;
       }
-      reportDownloadError(err, fetchedUrl, prefs.soundEnabled);
+      reportDownloadError(err, fetchedUrl, prefs.soundEnabled, "Download", undefined, "video");
       clearDownloadState(key);
     }
   }
@@ -870,7 +870,7 @@ export function HomePage() {
       const rawMessage = err instanceof Error ? err.message : "Playback failed.";
       console.error("[player]", rawMessage);
       // At capacity (e.g. a download is already running): the same friendly orange "Hang tight" as a download gets.
-      if (isCoolDown(err)) reportDownloadError(err, null, false);
+      if (isCoolDown(err)) reportDownloadError(err, null, false, "Download", undefined, "audio");
       else toast.error("Couldn't play this audio");
       setDownloadStatus((s) => {
         const next = { ...s };
