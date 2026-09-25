@@ -71,3 +71,11 @@ describe("bestAudioFormat", () => {
     expect(bestAudioFormat([fmt("opus", null, 1, "webm", 160), fmt("aac", null, 1, "m4a", 48)])?.format_id).toBe("opus")
   })
 })
+
+describe("videoRows by size when the source lists no sizes", () => {
+  it("sorts by the estimated sizes, then puts rows with no size last, smallest resolution first", () => {
+    const rows = [fmt("1080", 1080, null), fmt("720", 720, null), fmt("original", null, null), fmt("est", 480, 9_000_000)]
+    rows[3].filesizeApprox = true
+    expect(videoRows(rows, { bySize: true }).map((f) => f.format_id)).toEqual(["est", "720", "1080", "original"])
+  })
+})
