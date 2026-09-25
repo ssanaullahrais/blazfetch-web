@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Download, Share, SquarePlus } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Download, Share, SquarePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -83,6 +83,77 @@ export function InstallApp({ variant, onDone }: { variant: "icon" | "row"; onDon
           </span>
         </button>
       )}
+      <IosSteps open={stepsOpen} onOpenChange={setStepsOpen} />
+    </>
+  );
+}
+
+/** How long after load the floating card first appears, and how long it stays (it waits while hovered or focused). */
+const TOAST_DELAY_MS = 1500;
+const TOAST_VISIBLE_MS = 8000;
+
+/**
+ * A floating "Install app" card that shows on every visit until the app is installed: it appears a moment after the page
+ * loads, stays for a few seconds so the visitor notices it, then hides itself (the header button remains). Nothing is
+ * remembered between visits, and it never shows once the app is installed or where the browser cannot install.
+ */
+export function InstallToast() {
+  const state = useInstallState();
+  const [visible, setVisible] = useState(false);
+  const [holding, setHolding] = useState(false);
+  const [stepsOpen, setStepsOpen] = useState(false);
+  const offered = state !== "none";
+
+  useEffect(() => {
+    if (!offered) return;
+    const timer = window.setTimeout(() => setVisible(true), TOAST_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [offered]);
+
+  useEffect(() => {
+    if (!visible || holding) return;
+    const timer = window.setTimeout(() => setVisible(false), TOAST_VISIBLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [visible, holding]);
+
+  const install = () => {
+    if (state === "ios") {
+      setStepsOpen(true);
+      setVisible(false);
+      return;
+    }
+    void promptInstall().then(() => setVisible(false));
+  };
+
+  return (
+    <>
+      <div
+        role="status"
+        aria-live="polite"
+        aria-hidden={!(visible && offered)}
+        onMouseEnter={() => setHolding(true)}
+        onMouseLeave={() => setHolding(false)}
+        onFocus={() => setHolding(true)}
+        onBlur={() => setHolding(false)}
+        className={`fixed inset-x-4 z-40 mx-auto flex max-w-sm items-center gap-3 rounded-2xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg transition-all duration-300 sm:right-4 sm:left-auto sm:mx-0 ${
+          visible && offered ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
+        }`}
+        style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+      >
+        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border bg-background">
+          <Download className="size-4" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <p className="font-medium">Install {site.name}</p>
+          <p className="truncate text-xs text-muted-foreground">Open it like an app, right from your device.</p>
+        </span>
+        <Button size="sm" onClick={install} tabIndex={visible ? 0 : -1}>
+          Install
+        </Button>
+        <Button size="icon-sm" variant="ghost" aria-label="Dismiss" onClick={() => setVisible(false)} tabIndex={visible ? 0 : -1}>
+          <X />
+        </Button>
+      </div>
       <IosSteps open={stepsOpen} onOpenChange={setStepsOpen} />
     </>
   );

@@ -2,13 +2,21 @@ import { useEffect, useState } from "react";
 import { API } from "@/lib/api";
 import { notifyStatsChanged, onStatsChanged } from "@/lib/stats-events";
 
-export type SiteStats = { fetches: number; downloads: number; online?: number };
+export type SiteStats = {
+  fetches: number;
+  downloads: number;
+  online?: number;
+  /** Successful downloads per platform id (`{ youtube: 10 }`); absent on a backend that does not send it yet. */
+  platforms?: Record<string, number>;
+};
 
 /** Off only when explicitly set to "false" — shown by default, matching today's behavior. Build-time
  * (VITE_*), so an operator sets these once for their deployment; there is no per-visitor override. */
 export const SHOW_FETCH_STATS = import.meta.env.VITE_SHOW_FETCH_STATS !== "false";
 export const SHOW_DOWNLOAD_STATS = import.meta.env.VITE_SHOW_DOWNLOAD_STATS !== "false";
 export const SHOW_ONLINE_VISITORS = import.meta.env.VITE_SHOW_ONLINE_VISITORS !== "false";
+/** The download count in each social icon's tooltip on the home page. */
+export const SHOW_PLATFORM_DOWNLOADS = import.meta.env.VITE_SHOW_PLATFORM_DOWNLOADS !== "false";
 
 function isCount(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
@@ -18,11 +26,16 @@ function parseStats(data: unknown): SiteStats | null {
   if (!data || typeof data !== "object") return null;
   const value = data as Record<string, unknown>;
   if (value.success === false) return null;
-  const { fetches, downloads, online } = value;
+  const { fetches, downloads, online, platforms } = value;
   if (!isCount(fetches) || !isCount(downloads)) return null;
-  // online is newer than fetches/downloads: a backend that hasn't been upgraded yet simply omits it, and
-  // that must not invalidate the rest of the payload — the footer just shows two counts instead of three.
-  return isCount(online) ? { fetches, downloads, online } : { fetches, downloads };
+  // online and platforms are newer than fetches/downloads: a backend that hasn't been upgraded yet simply omits
+  // them, and that must not invalidate the rest of the payload — the footer just shows fewer counts.
+  const stats: SiteStats = { fetches, downloads };
+  if (isCount(online)) stats.online = online;
+  if (platforms && typeof platforms === "object" && !Array.isArray(platforms)) {
+    stats.platforms = Object.fromEntries(Object.entries(platforms).filter(([, n]) => isCount(n))) as Record<string, number>;
+  }
+  return stats;
 }
 
 /** All-time totals from the backend (GET /api/v1/stats). Resolves to null when they are not available. */
