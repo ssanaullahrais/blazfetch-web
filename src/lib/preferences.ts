@@ -29,7 +29,9 @@ const HARDCODED_DEFAULTS: Preferences = {
   deliveryMode: "auto",
 };
 
-/** Fastest, Compatible MP4 and With progress bar are switched off for now: downloads always use Automatic.
+/** Fastest and Compatible are switched off for now: downloads always use Automatic. ("progress" is not
+ * offered as a choice in settings at all — same underlying prepare flow as Compatible, just with a progress bar
+ * — but the value is kept here so anyone with it already stored from before keeps working.)
  * Build with VITE_ENABLE_DOWNLOAD_METHODS=true to let visitors choose. */
 export const DOWNLOAD_METHODS_SELECTABLE = import.meta.env.VITE_ENABLE_DOWNLOAD_METHODS === "true";
 
