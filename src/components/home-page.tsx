@@ -78,6 +78,7 @@ import { safeHref } from "@/lib/safe-url";
 import { applySeo } from "@/lib/seo";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { API_DOCS_URL, GithubFooter, GithubMark, REPOS } from "@/components/github-link";
+import { InstallApp } from "@/components/install-app";
 import { UnavailableCard } from "@/components/unavailable-card";
 import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
 import { coerceMediaUrl } from "@/lib/media-url";
@@ -997,6 +998,7 @@ export function HomePage() {
                         {isDarkTheme ? <Moon className="size-4" /> : <Sun className="size-4" />}
                       </span>
                     </button>
+                    <InstallApp variant="row" />
                     <p className="px-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Project</p>
                     {REPOS.map((repo) => (
                       <a
@@ -1043,6 +1045,9 @@ export function HomePage() {
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="hidden lg:block">
               <ServiceStatus />
+            </div>
+            <div className="hidden sm:block">
+              <InstallApp variant="icon" />
             </div>
             <SettingsMenu />
             <div className="lg:hidden">
