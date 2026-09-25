@@ -2,7 +2,9 @@ import { safeHref } from "@/lib/safe-url";
 import { useEffect, useState } from "react";
 import type * as React from "react";
 import { getPlatforms } from "@/lib/api";
+import { Download } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatCount, SHOW_PLATFORM_DOWNLOADS, useSiteStats } from "@/lib/site-stats";
 
 type Platform =
   | { slug: string; name: string; url: string; color: string; path: string; monogram?: undefined }
@@ -174,8 +176,20 @@ function usePlatformList(): Platform[] {
   return list;
 }
 
+/** The backend counts X under its platform id "twitter"; the icon set keys it as "x". */
+const BACKEND_ID_BY_SLUG: Record<string, string> = { x: "twitter" };
+
+/** Downloads of one platform from the stats' per-platform map (0 when it has none yet), or undefined when unknown. */
+function downloadsFor(counts: Record<string, number> | undefined, slug: string): number | undefined {
+  if (!SHOW_PLATFORM_DOWNLOADS || !counts) return undefined;
+  return counts[BACKEND_ID_BY_SLUG[slug] ?? slug] ?? 0;
+}
+
 export function PlatformIcons({ compact = false }: { compact?: boolean } = {}) {
   const platforms = usePlatformList();
+  // One stats subscription for the whole grid (not one per icon); off entirely when the tooltips do not show it.
+  const stats = useSiteStats();
+  const counts = SHOW_PLATFORM_DOWNLOADS ? stats?.platforms : undefined;
   return (
     <div className="flex w-full max-w-2xl flex-col items-center gap-4">
       {/* A static grid holds the full list while there's nothing else on
@@ -190,6 +204,7 @@ export function PlatformIcons({ compact = false }: { compact?: boolean } = {}) {
               <PlatformLink
                 key={`${p.slug}-${index}`}
                 platform={p}
+                downloads={downloadsFor(counts, p.slug)}
                 className="w-16 shrink-0"
                 aria-hidden={index >= platforms.length}
                 tabIndex={index >= platforms.length ? -1 : undefined}
@@ -201,12 +216,12 @@ export function PlatformIcons({ compact = false }: { compact?: boolean } = {}) {
         <>
           <div className="grid grid-cols-4 items-center justify-items-center gap-x-4 gap-y-3 sm:hidden">
             {platforms.map((p) => (
-              <PlatformLink key={p.name} platform={p} className="w-full" />
+              <PlatformLink key={p.name} platform={p} downloads={downloadsFor(counts, p.slug)} className="w-full" />
             ))}
           </div>
           <div className="hidden grid-cols-4 items-center justify-items-center gap-x-4 gap-y-3 sm:grid sm:grid-cols-6 sm:gap-x-6">
             {platforms.map((p) => (
-              <PlatformLink key={p.name} platform={p} className="w-full" />
+              <PlatformLink key={p.name} platform={p} downloads={downloadsFor(counts, p.slug)} className="w-full" />
             ))}
           </div>
         </>
@@ -217,10 +232,13 @@ export function PlatformIcons({ compact = false }: { compact?: boolean } = {}) {
 
 function PlatformLink({
   platform: p,
+  downloads,
   className = "",
   ...props
 }: {
   platform: Platform;
+  /** Total downloads of this platform, shown in the tooltip; undefined hides the line. */
+  downloads?: number;
   className?: string;
 } & Pick<React.AnchorHTMLAttributes<HTMLAnchorElement>, "aria-hidden" | "tabIndex">) {
   return (
@@ -261,7 +279,16 @@ function PlatformLink({
           <span className="text-center text-[10px] leading-tight text-muted-foreground">{p.name}</span>
         </a>
       </TooltipTrigger>
-      <TooltipContent>{p.name}</TooltipContent>
+      <TooltipContent>
+        <span className="font-medium">{p.name}</span>
+        {downloads !== undefined && (
+          <span className="mt-0.5 flex items-center gap-1 text-muted-foreground">
+            <Download className="size-3" aria-hidden />
+            {formatCount(downloads)}
+            <span className="sr-only">{downloads === 1 ? "download" : "downloads"}</span>
+          </span>
+        )}
+      </TooltipContent>
     </Tooltip>
   );
 }

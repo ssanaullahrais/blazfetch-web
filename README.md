@@ -125,7 +125,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Pull to refresh | On phones, pull down from the top to show a circular loader; releasing reloads the app on the home screen with an empty link box |
 | Settings | Download method (Automatic, Fastest or Compatible, each switchable from `.env`), default tab (video or audio), fetch on paste, sounds, and the sort options ("Audio: MP3 first", "Video: smallest first"). A popover with hover tooltips on desktop, a drawer from the bottom on phones |
 | Menu (phones) | Share, theme, and links to the frontend and backend repositories on GitHub and to the API documentation |
-| Installable app (PWA) | On by default. Visitors can install it to the home screen or desktop with the **Install app** button (header on wider screens, the menu on phones; on iPhone and iPad it shows the Share, Add to Home Screen steps, and it is hidden once installed or where the browser cannot install), it opens instantly and offline, and a "New version is available · Reload" card appears after a deploy (it never reloads by itself, so a download is not cut off). API calls always go to the network. Turn it off with `VITE_ENABLE_PWA=false`. `pnpm dev` serves the manifest and a service worker too, so the option also shows on `localhost` |
+| Installable app (PWA) | On by default. Visitors can install it to the home screen or desktop with the **Install app** button (header on wider screens, the menu on phones), and a floating "Install" card that appears for a few seconds on each visit until the app is installed (on iPhone and iPad it shows the Share, Add to Home Screen steps, and it is hidden once installed or where the browser cannot install), it opens instantly and offline, and a "New version is available · Reload" card appears after a deploy (it never reloads by itself, so a download is not cut off). API calls always go to the network. Turn it off with `VITE_ENABLE_PWA=false`. `pnpm dev` serves the manifest and a service worker too, so the option also shows on `localhost` |
 
 ### Download methods
 
@@ -146,6 +146,8 @@ estimated size, and the app needs no setting for it (see the backend's [API docs
 
 ## Configuration
 
+Every setting is listed with its default and a recommendation in [.env.example](.env.example): copy it to `.env.local` and change only what you need.
+
 | Variable | Default | Purpose |
 |---|---|---|
 | `VITE_SITE_NAME`, `VITE_SITE_TAGLINE`, `VITE_SITE_DESCRIPTION`, `VITE_SITE_URL`, ... | BlazFetch, ... | White label and SEO: name, tagline, description, public URL and more. See [docs/BRANDING.md](docs/BRANDING.md) |
@@ -153,6 +155,7 @@ estimated size, and the app needs no setting for it (see the backend's [API docs
 | `VITE_ENABLE_AUDIO_PREVIEW` | off | `true` shows the play button on audio rows (previews are off because most audio is M4A/WebM) |
 | `VITE_DOWNLOAD_METHODS` | `auto,stream,prepare` | Which download methods Settings offers: any of `auto` (Automatic), `stream` (Fastest), `prepare` (Compatible), e.g. `auto` for Automatic only |
 | `VITE_ENABLE_PWA` | on | `false` builds a plain website: no install prompt, no offline copy. Visitors who installed an earlier build are cleaned up on their next visit. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#progressive-web-app) |
+| `VITE_SHOW_PLATFORM_DOWNLOADS` | on | `false` hides the download count in each social icon's tooltip on the home page (the name with a download icon and the count, e.g. YouTube ⬇ 15, from the backend's per-platform `platforms` totals in `GET /stats`) |
 | `VITE_SHOW_FETCH_STATS`, `VITE_SHOW_DOWNLOAD_STATS`, `VITE_SHOW_ONLINE_VISITORS` | on | Set any to `false` to hide that counter from the footer. "Online" also needs a backend new enough to send it (`ONLINE_VISITOR_WINDOW_SECONDS` in the API) |
 
 The proxy target for `pnpm dev` and `pnpm preview` is in [vite.config.ts](vite.config.ts).
