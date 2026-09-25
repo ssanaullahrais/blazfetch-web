@@ -144,8 +144,8 @@ export function InstallToast() {
           <Download className="size-4" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <p className="font-medium">Install App</p>
-          <p className="truncate text-xs text-muted-foreground">{site.name} Install App Now!</p>
+          <p className="font-medium">Get the {site.name} app</p>
+          <p className="truncate text-xs text-muted-foreground">One tap from your home screen or desktop.</p>
         </span>
         <Button size="sm" onClick={install} tabIndex={visible ? 0 : -1}>
           Install
