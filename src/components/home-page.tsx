@@ -69,6 +69,7 @@ import { cancelDownloadJob, startDownloadJob } from "@/lib/jobs";
 import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
+import { bumpDownloadCount } from "@/lib/site-stats";
 import { SettingsMenu } from "@/components/settings-menu";
 import { FLOW_STEPS } from "@/lib/flow-steps";
 import { site } from "@/config/site";
@@ -649,6 +650,7 @@ export function HomePage() {
       }
       if (!isCurrent()) return;
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
+      bumpDownloadCount(); // The footer counts this immediately; the server confirms it later on its own.
       closeStopDialogForKeys([key]);
       if (prefs.soundEnabled) playDownloadCompleteSound();
     } catch (err) {
@@ -736,6 +738,7 @@ export function HomePage() {
       );
       if (!isCurrent()) return;
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
+      bumpDownloadCount(); // The footer counts this immediately; the server confirms it later on its own.
       closeStopDialogForKeys([key]);
       if (prefs.soundEnabled) playDownloadCompleteSound();
     } catch (err) {
@@ -1594,6 +1597,18 @@ function VideoFormatList({
   );
 }
 
+const AUDIO_COMPATIBILITY_RANK: Record<string, number> = { mp3: 0, webm: 1 };
+
+/** MP3 first, then WEBM, then everything else, each tier still highest-bitrate-first — the source's own
+ * quality-first order doesn't always put the most broadly playable format at the top. See Preferences >
+ * "Sort audio by compatibility" in settings-menu.tsx. */
+function sortAudioByCompatibility(formats: MediaFormat[]): MediaFormat[] {
+  return [...formats].sort((a, b) => {
+    const rankDiff = (AUDIO_COMPATIBILITY_RANK[a.ext.toLowerCase()] ?? 2) - (AUDIO_COMPATIBILITY_RANK[b.ext.toLowerCase()] ?? 2);
+    return rankDiff !== 0 ? rankDiff : (b.abr ?? 0) - (a.abr ?? 0);
+  });
+}
+
 function AudioFormatList({
   info,
   prefs,
@@ -1632,7 +1647,10 @@ function AudioFormatList({
       extractor: info.extractor,
       videoId: info.id,
     })}.${ext || "m4a"}`;
+  // The extension hint for "Best quality audio" always matches the server's own best pick (highest
+  // bitrate), regardless of the compatibility sort below — that toggle only reorders the list underneath.
   const bestExt = info.audioFormats[0]?.ext;
+  const listedFormats = prefs.sortAudioByCompatibility ? sortAudioByCompatibility(info.audioFormats) : info.audioFormats;
 
   return (
     <>
@@ -1650,7 +1668,7 @@ function AudioFormatList({
         previewLoading={previewLoading[keyFor("audio")]}
         previewProgress={previewProgress[keyFor("audio")]}
       />
-      {!bestOnly && info.audioFormats.slice(0, 5).map((f) => {
+      {!bestOnly && listedFormats.slice(0, 5).map((f) => {
         const key = keyFor("audio", f.format_id);
         const sizeLabel = sizeLabelFor(f.filesize);
         return (
