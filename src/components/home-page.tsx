@@ -1925,8 +1925,11 @@ function FormatRow({
             </div>
           )}
           <div className="flex min-w-0 flex-col gap-1 sm:max-w-xs">
-            <div className={dense ? "flex min-w-0 items-center gap-1.5" : "flex flex-wrap items-center gap-1.5"}>
-              <span className={dense ? "min-w-0 flex-1 truncate text-xs font-medium" : "text-sm"}>{label}</span>
+            <div className="flex min-w-0 items-center gap-1.5">
+              {/* A long title shrinks with an ellipsis so the badge stays on the same line. */}
+              <span title={label} className={dense ? "min-w-0 flex-1 truncate text-xs font-medium" : "min-w-0 truncate text-sm"}>
+                {label}
+              </span>
               {durationLabel && (
                 <Badge
                   variant="outline"
@@ -1939,19 +1942,19 @@ function FormatRow({
               {sizeLabel && (
                 <Badge
                   variant="outline"
-                  className="hidden h-5 gap-1 px-1.5 text-[10px] leading-none font-normal text-muted-foreground sm:inline-flex"
+                  className="hidden h-5 shrink-0 gap-1 px-1.5 text-[10px] leading-none font-normal text-muted-foreground sm:inline-flex"
                 >
                   <HardDrive className="size-3" />
                   {sizeLabel}
                 </Badge>
               )}
               {best ? (
-                <Badge className={`h-5 py-0 px-1.5 text-[10px] leading-none font-semibold ${BEST_BADGE_CLASS}`}>
+                <Badge className={`h-5 shrink-0 py-0 px-1.5 text-[10px] leading-none font-semibold ${BEST_BADGE_CLASS}`}>
                   ★ Best
                 </Badge>
               ) : (
                 quality && (
-                  <Badge className={`h-5 py-0 px-1.5 text-[10px] leading-none font-semibold ${QUALITY_BADGE_CLASSES[quality.tier]}`}>
+                  <Badge className={`h-5 shrink-0 py-0 px-1.5 text-[10px] leading-none font-semibold ${QUALITY_BADGE_CLASSES[quality.tier]}`}>
                     {quality.label}
                   </Badge>
                 )
