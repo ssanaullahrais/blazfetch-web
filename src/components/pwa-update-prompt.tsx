@@ -5,16 +5,20 @@ import { Button } from "@/components/ui/button";
 import { watchForUpdates } from "@/lib/pwa";
 
 /**
- * Registers the service worker and, when a new version has been deployed, offers a reload. The update never applies
- * on its own, so a download in progress is not cut off; "Later" keeps the current version until the next visit.
+ * Registers the service worker and, once a new version has taken over, offers a reload. The page is never reloaded
+ * by itself, so a download in progress is not cut off; "Later" keeps this page as it is, and any reload shows the
+ * new version.
  */
 export function PwaUpdatePrompt() {
   const stopWatching = useRef<(() => void) | null>(null);
   const [reloading, setReloading] = useState(false);
+  const [updated, setUpdated] = useState(false);
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
   } = useRegisterSW({
+    // Called instead of the plugin's own automatic reload when the new version activates.
+    onNeedReload: () => setUpdated(true),
     onRegisteredSW(_url, registration) {
       if (!registration) return;
       stopWatching.current?.();
@@ -24,12 +28,12 @@ export function PwaUpdatePrompt() {
 
   useEffect(() => () => stopWatching.current?.(), []);
 
-  if (!needRefresh) return null;
+  if (!needRefresh && !updated) return null;
 
   const reload = () => {
     setReloading(true);
-    // Activates the waiting worker; the page reloads once it takes control.
-    void updateServiceWorker(true);
+    if (updated) window.location.reload();
+    else void updateServiceWorker(true); // a worker still waiting: activate it, then the page reloads
   };
 
   return (
@@ -44,7 +48,15 @@ export function PwaUpdatePrompt() {
       <Button size="sm" onClick={reload} disabled={reloading}>
         {reloading ? "Reloading…" : "Reload"}
       </Button>
-      <Button size="icon-sm" variant="ghost" aria-label="Later" onClick={() => setNeedRefresh(false)}>
+      <Button
+        size="icon-sm"
+        variant="ghost"
+        aria-label="Later"
+        onClick={() => {
+          setNeedRefresh(false);
+          setUpdated(false);
+        }}
+      >
         <X />
       </Button>
     </div>

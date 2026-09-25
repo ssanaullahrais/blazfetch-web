@@ -74,9 +74,10 @@ export default defineConfig(({ mode }) => {
     tailwindcss(),
     siteIdentity(site, pwaEnabled),
     VitePWA({
-      // A new version waits until the visitor taps "Reload" (src/components/pwa-update-prompt.tsx), so an update
-      // never reloads the page in the middle of a download.
-      registerType: "prompt",
+      // A new version takes over as soon as it has downloaded (skipWaiting + clientsClaim), so the next reload always
+      // shows it, even on a tab opened from an old build. The open page is never reloaded by itself (that would cut
+      // off a download): src/components/pwa-update-prompt.tsx offers the reload instead.
+      registerType: "autoUpdate",
       // Registered from the app (src/lib/pwa.ts), not by an injected script.
       injectRegister: false,
       // With the PWA off, sw.js is still published, as a worker that unregisters itself and deletes its caches.
@@ -99,6 +100,8 @@ export default defineConfig(({ mode }) => {
         // Only link-preview crawlers read the share image, and vite.svg is unused, so neither is kept offline.
         globIgnores: ["og-image.png", "vite.svg"],
         cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
       },
       // The icons already match globPatterns above; listing them again would precache them twice.
       includeManifestIcons: false,
