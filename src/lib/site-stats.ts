@@ -31,6 +31,9 @@ export function formatCount(value: number): string {
 }
 
 const POLL_MS = 2_000;
+/** After the server refuses or drops the live connection for good, try it again this much later (polling meanwhile). */
+const RECONNECT_MS = 30_000;
+const EVENT_SOURCE_CLOSED = 2; // EventSource.CLOSED
 
 /**
  * Listen for committed totals. Poll only when the live connection is unavailable, and reconnect after hiding the tab.
@@ -40,6 +43,7 @@ export function watchSiteStats(onStats: (value: SiteStats) => void): () => void 
     let revision = 0;
     let live = false;
     let source: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
     const load = () => {
       const requestRevision = ++revision;
       void getSiteStats().then((value) => {
@@ -60,7 +64,17 @@ export function watchSiteStats(onStats: (value: SiteStats) => void): () => void 
             }
           } catch { /* Keep the last valid totals. */ }
         };
-        source.onerror = () => { live = false; }; // EventSource retries; polling covers the gap.
+        source.onerror = () => {
+          live = false; // Polling covers the gap.
+          // EventSource retries a dropped connection by itself, but not one the server refused (for example 429 when
+          // too many tabs are open): that one stays closed, so reconnect later instead of polling forever.
+          if (source?.readyState === EVENT_SOURCE_CLOSED) {
+            source.close();
+            source = null;
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(() => { if (!cancelled) connect(); }, RECONNECT_MS);
+          }
+        };
       } catch { live = false; }
     };
     const poll = setInterval(() => {
@@ -72,6 +86,7 @@ export function watchSiteStats(onStats: (value: SiteStats) => void): () => void 
         load();
         connect();
       } else {
+        clearTimeout(reconnectTimer);
         source?.close();
         source = null;
         live = false;
@@ -82,6 +97,7 @@ export function watchSiteStats(onStats: (value: SiteStats) => void): () => void 
     connect();
     return () => {
       cancelled = true;
+      clearTimeout(reconnectTimer);
       source?.close();
       clearInterval(poll);
       stopListening();

@@ -115,8 +115,21 @@ export function friendlyError(rawMessage: string): string {
   return cleanRawError(rawMessage) || "Something went wrong. Please try again.";
 }
 
+/**
+ * The backend's own request limits answer with PLATFORM_RATE_LIMITED / SERVER_BUSY and "Too many ... requests", which
+ * would otherwise read as if YouTube or TikTok were limiting us.
+ */
+function isOwnRateLimit(err: ApiError): boolean {
+  return (err.code === "PLATFORM_RATE_LIMITED" || err.code === "SERVER_BUSY") && /^too many \w+ requests/i.test(err.message);
+}
+
+const OWN_RATE_LIMIT = "You're sending requests too quickly. Please wait a minute and try again.";
+const SHORT_LINK_FAILED = "This short link couldn't be opened. Paste the full link to the post instead.";
+
 /** The message to show a person for any error: by backend code when there is one, otherwise by wording. */
 export function friendlyErrorFor(err: unknown): string {
+  if (err instanceof ApiError && isOwnRateLimit(err)) return OWN_RATE_LIMIT;
+  if (err instanceof ApiError && err.code === "INVALID_URL" && /short link/i.test(err.message)) return SHORT_LINK_FAILED;
   if (err instanceof ApiError && MESSAGES[err.code]) return MESSAGES[err.code];
   if (err instanceof Error) return friendlyError(err.message);
   return "Something went wrong. Please try again.";
@@ -125,6 +138,7 @@ export function friendlyErrorFor(err: unknown): string {
 /** The short toast title for a failed fetch. */
 export function errorTitleFor(err: unknown): string {
   if (err instanceof ApiError) {
+    if (isOwnRateLimit(err)) return "Slow down";
     if (err.code === "UNSUPPORTED_PLATFORM") return "Not supported";
     if (err.code === "MEDIA_NOT_FOUND" || err.code === "MEDIA_UNAVAILABLE") return "Video not found";
     if (err.code === "PRIVATE_MEDIA" || err.code === "LOGIN_REQUIRED" || err.code === "AGE_RESTRICTED") return "Can't download this";

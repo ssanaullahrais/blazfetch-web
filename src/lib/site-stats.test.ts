@@ -84,6 +84,22 @@ describe('live site stats', () => {
     expect(fetch).toHaveBeenCalledTimes(3);
   });
 
+  it('reconnects later when the server refuses the live connection (for example too many tabs)', async () => {
+    stop = watchSiteStats(vi.fn());
+    const refused = Source.instances[0] as Source & { readyState?: number };
+    refused.readyState = 2; // CLOSED: EventSource will not retry this by itself
+    refused.onerror?.();
+    expect(refused.close).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(fetch).toHaveBeenCalledTimes(2); // polling covers the gap
+    await vi.advanceTimersByTimeAsync(28_000);
+    expect(Source.instances).toHaveLength(2);
+    Source.instances[1].send(12, 4);
+    const calls = vi.mocked(fetch).mock.calls.length;
+    await vi.advanceTimersByTimeAsync(4000);
+    expect(fetch).toHaveBeenCalledTimes(calls); // live again, so polling stops
+  });
+
   it('keeps working when EventSource is unavailable and cleans up polling', async () => {
     vi.stubGlobal('EventSource', undefined);
     stop = watchSiteStats(vi.fn());

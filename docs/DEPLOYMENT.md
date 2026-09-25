@@ -55,6 +55,10 @@ first-party start cookie and the frame's error page, which needs same origin.
 Then add HTTPS with `sudo certbot --nginx -d example.com`. With this same-domain setup the backend needs no
 CORS change.
 
+In the backend's `.env`, set `TRUST_PROXY=1` (Nginx is one proxy in front of it). The backend then sees each visitor's
+real IP address, which its per-IP limits need. Without it those limits switch themselves off rather than make every
+visitor share Nginx's address.
+
 ## Security headers
 
 Add these to the `server` block so browsers apply sensible protections to the site:
@@ -65,10 +69,14 @@ add_header X-Frame-Options "SAMEORIGIN" always;
 add_header Referrer-Policy "strict-origin-when-cross-origin" always;
 add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
 add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src 'self' https://challenges.cloudflare.com; connect-src 'self' https:; img-src 'self' https: data: blob:; media-src 'self' https: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'" always;
 ```
 
-If you use Cloudflare Turnstile, do not add a strict `Content-Security-Policy` without allowing
-`https://challenges.cloudflare.com` for scripts and frames. See [SECURITY.md](../SECURITY.md).
+The Content-Security-Policy stops the page from running scripts from anywhere except this site and Cloudflare
+Turnstile. Thumbnails, audio previews and image downloads come straight from each platform's servers, which is why
+images, media and requests may use any `https:` address. If you serve `/api` from another domain, add it to
+`connect-src`. Nginx drops these headers inside a `location` block that has an `add_header` of its own, so keep them
+in the `server` block.
 
 ## Branding and SEO
 
