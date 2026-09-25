@@ -114,6 +114,11 @@ export function SettingsMenu() {
           checked={prefs.sortAudioByCompatibility}
           onChange={set("sortAudioByCompatibility")}
         />
+        <Toggle
+          label="Sort video by smallest size"
+          checked={prefs.sortVideoBySmallestSize}
+          onChange={set("sortVideoBySmallestSize")}
+        />
       </PopoverContent>
     </Popover>
   );
