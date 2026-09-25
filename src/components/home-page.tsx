@@ -37,6 +37,7 @@ import { FormatDetailsDialog } from "@/components/format-details-dialog";
 import { DownloadProgressButton } from "@/components/download/download-progress-button";
 import { StopDownloadDialog } from "@/components/download/stop-download-dialog";
 import { reportDownloadError } from "@/lib/reportDownloadError";
+import { isCoolDown } from "@/lib/errors";
 import { ErrorToast } from "@/components/error-toast";
 import { ServiceStatus } from "@/components/service-status";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -868,7 +869,9 @@ export function HomePage() {
       if (err instanceof DOMException && err.name === "AbortError") return;
       const rawMessage = err instanceof Error ? err.message : "Playback failed.";
       console.error("[player]", rawMessage);
-      toast.error("Couldn't play this audio");
+      // At capacity (e.g. a download is already running): the same friendly orange "Hang tight" as a download gets.
+      if (isCoolDown(err)) reportDownloadError(err, null, false);
+      else toast.error("Couldn't play this audio");
       setDownloadStatus((s) => {
         const next = { ...s };
         delete next[key];
