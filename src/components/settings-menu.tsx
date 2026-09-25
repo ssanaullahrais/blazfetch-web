@@ -29,7 +29,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (val
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted"
+      className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-muted"
     >
       <span>{label}</span>
       <span
@@ -74,7 +74,7 @@ export function SettingsMenu() {
                 title={locked ? "Not available yet" : method.description}
                 disabled={locked}
                 onClick={() => set("deliveryMode")(method.value)}
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs hover:bg-muted disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:bg-transparent"
               >
                 <span
                   className={`size-3.5 shrink-0 rounded-full border ${
@@ -92,7 +92,7 @@ export function SettingsMenu() {
         </p>
 
         <div className="my-1.5 h-px bg-border" />
-        <div className="flex items-center justify-between gap-2 px-2 py-1 text-sm">
+        <div className="flex items-center justify-between gap-2 px-2 py-1 text-xs">
           <span>Default Tab</span>
           <div className="flex gap-1">
             {(["video", "audio"] as const).map((mode) => (
