@@ -13,7 +13,7 @@ credentials so the backend's guest cookie (`blazfetch_guest_id`) works. See the
 | `POST /fetch/audio` | Audio options, including the MP3-conversion option | `fetchInfo()` (called together with `/fetch` for video sources) |
 | `GET /media/<platform>/<id>` (and `/playlist/<id>`) | Open a stored page by its stable path, no re-extraction. 410 `MEDIA_UNAVAILABLE` carries a tombstone | `getStoredMedia()` |
 | `GET /stream?url&kind&formatId&filename&mode&token` | One-request download (default for Download). `mode` is `auto`, `stream` or `prepare` | `startBrowserDownload()`, `fetchStreamBlob()` |
-| `POST /download` | Job-based download flow (not offered as a choice in settings) | `startDownloadJob()` |
+| `POST /download` | Job-based download flow, used for the Compatible delivery method | `startDownloadJob()` |
 | `GET /jobs/:id` | Poll status and progress every second | `getDownloadJob()`, `waitForDownloadJob()` |
 | `GET /downloads/:id` | The file itself (browser download, or audio preview) | `downloadJobFileUrl()`, `requestDownloadJobFile()` |
 | `DELETE /downloads/:id` | Stop: cancels the job, ends yt-dlp/ffmpeg and removes temp files | `cancelDownloadJob()` |
