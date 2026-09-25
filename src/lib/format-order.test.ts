@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { MediaFormat } from "@/lib/api"
-import { audioRows, videoRows } from "@/lib/format-order"
+import { audioRows, bestAudioFormat, videoRows } from "@/lib/format-order"
 
 const fmt = (id: string, height: number | null, filesize: number | null, ext = "mp4", abr: number | null = null): MediaFormat => ({
   format_id: id,
@@ -62,5 +62,12 @@ describe("audioRows", () => {
   it("reorders the five listed tracks by compatibility, without swapping in the sixth", () => {
     expect(audioRows(audio, { byCompatibility: false }).map((f) => f.format_id)).toEqual(["opus160", "m4a128", "opus70", "m4a48", "opus50"])
     expect(audioRows(audio, { byCompatibility: true }).map((f) => f.format_id)).toEqual(["opus160", "opus70", "opus50", "m4a128", "m4a48"])
+  })
+})
+
+describe("bestAudioFormat", () => {
+  it("matches the server: AAC over a WebM track of about the same bitrate, the top bitrate otherwise", () => {
+    expect(bestAudioFormat([fmt("251", null, 1, "webm", 135), fmt("140", null, 1, "m4a", 129)])?.format_id).toBe("140")
+    expect(bestAudioFormat([fmt("opus", null, 1, "webm", 160), fmt("aac", null, 1, "m4a", 48)])?.format_id).toBe("opus")
   })
 })

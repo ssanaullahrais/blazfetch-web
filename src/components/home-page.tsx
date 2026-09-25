@@ -68,7 +68,7 @@ import { fetchStreamBlob, saveBlobToDisk, startBrowserDownload } from "@/lib/str
 import { cancelDownloadJob, startDownloadJob } from "@/lib/jobs";
 import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
-import { audioRows, videoRows } from "@/lib/format-order";
+import { audioRows, bestAudioFormat, videoRows } from "@/lib/format-order";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { bumpDownloadCount } from "@/lib/site-stats";
 import { SettingsMenu } from "@/components/settings-menu";
@@ -1744,9 +1744,9 @@ function AudioFormatList({
       extractor: info.extractor,
       videoId: info.id,
     })}.${ext || "m4a"}`;
-  // The extension hint for "Best quality audio" always matches the server's own best pick (highest
-  // bitrate), regardless of the compatibility sort below — that toggle only reorders the list underneath.
-  const bestExt = info.audioFormats[0]?.ext;
+  // The extension hint for "Best quality audio" matches the server's own best pick (see bestAudioFormat),
+  // regardless of the compatibility sort below — that toggle only reorders the list underneath.
+  const bestExt = bestAudioFormat(info.audioFormats)?.ext;
   const listedFormats = audioRows(info.audioFormats, { byCompatibility: prefs.sortAudioByCompatibility });
 
   return (
