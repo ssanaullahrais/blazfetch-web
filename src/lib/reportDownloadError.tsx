@@ -1,3 +1,4 @@
+import { TriangleAlert } from "lucide-react";
 import toast from "@/lib/toast";
 import { ErrorToast } from "@/components/error-toast";
 import { friendlyErrorFor, isCoolDown } from "@/lib/errors";
@@ -15,9 +16,16 @@ export function reportDownloadError(
   console.error(`[${actionLabel.toLowerCase()}]`, rawMessage);
   void _sourceUrl;
   const message = friendlyErrorFor(err);
-  // A busy server is a short cool-down, not a failure: friendly wording, no red, no error sound.
+  // A busy server is a short wait, not a failure: friendly wording and an orange alert instead of a red error, no error sound.
   const coolDown = isCoolDown(err);
-  const title = coolDown ? "Hang tight" : `${actionLabel} failed`;
-  toast.error(<ErrorToast title={title} message={message} calm={coolDown} />, toastId ? { id: toastId } : undefined);
+  const options = toastId ? { id: toastId } : undefined;
+  if (coolDown) {
+    toast(<ErrorToast title="Hang tight" message={message} calm />, {
+      ...options,
+      icon: <TriangleAlert className="size-5" style={{ color: "var(--toast-warning)" }} aria-hidden />,
+    });
+  } else {
+    toast.error(<ErrorToast title={`${actionLabel} failed`} message={message} />, options);
+  }
   if (soundEnabled && !coolDown) playErrorSound();
 }
