@@ -913,11 +913,9 @@ export function HomePage() {
   const shareUrl = fetchedUrl && info ? shareUrlForPath(window.location.origin, info.stored?.path, fetchedUrl) : null;
 
   return (
-    // Native scroll (not the Radix ScrollArea this replaced), restyled via the .scrollbar-thin
-    // utility in index.css to keep the same look. Native scrolling on this one container is what
-    // lets overscroll-y-contain reliably reach the actual scrolling element on iOS, instead of a
-    // synthetic nested viewport whose own boundary the browser's touch-scroll physics don't see.
-    <div className="scrollbar-thin h-svh w-full min-w-0 overflow-y-auto overscroll-y-contain">
+    // The page itself scrolls, like any website: no fixed-height scroll box, whose height (svh) is shorter than
+    // the screen once iOS Safari's toolbar collapses, which cut the list off above an empty band.
+    <div className="w-full min-w-0">
     <PullToRefresh onRefresh={goHome} />
     <div
       className={[
