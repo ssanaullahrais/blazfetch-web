@@ -19,7 +19,11 @@ function ScrollArea({
       <ScrollAreaPrimitive.Viewport
         data-slot="scroll-area-viewport"
         onScroll={onViewportScroll}
-        className="size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:!block"
+        // This is the element that actually scrolls (html/body are locked, see index.css). Without
+        // overscroll-y-contain here, iOS Safari chains the drag past this viewport's own boundary to
+        // its non-scrolling ancestors, which can leave a blank rubber-band gap below real content
+        // (e.g. the footer) that never fully springs back.
+        className="size-full overscroll-y-contain rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 [&>div]:!block"
       >
         {children}
       </ScrollAreaPrimitive.Viewport>
