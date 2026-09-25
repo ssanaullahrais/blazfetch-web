@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   ApiError,
   apiErrorFromBody,
@@ -93,6 +93,27 @@ describe("friendly messages", () => {
     expect(errorTitleFor(new ApiError("MEDIA_UNAVAILABLE", ""))).toBe("Video not found")
     expect(errorTitleFor(new ApiError("PRIVATE_MEDIA", ""))).toBe("Can't download this")
     expect(errorTitleFor(new ApiError("SERVER_BUSY", ""))).toBe("Try again later")
+  })
+})
+
+describe("while the browser is offline", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("says so instead of blaming the service", () => {
+    vi.stubGlobal("navigator", { onLine: false })
+    expect(friendlyErrorFor(new ApiError("NETWORK_ERROR", "Failed to fetch"))).toMatch(/you're offline/i)
+    expect(friendlyErrorFor(new Error("Failed to fetch"))).toMatch(/you're offline/i)
+    expect(errorTitleFor(new ApiError("NETWORK_ERROR", ""))).toBe("No connection")
+  })
+
+  it("keeps backend reasons, which only arrive while online", () => {
+    vi.stubGlobal("navigator", { onLine: false })
+    expect(friendlyErrorFor(new ApiError("PRIVATE_MEDIA", ""))).not.toMatch(/offline/i)
+  })
+
+  it("keeps the usual wording while online", () => {
+    vi.stubGlobal("navigator", { onLine: true })
+    expect(friendlyErrorFor(new Error("Failed to fetch"))).toMatch(/could not be reached/i)
   })
 })
 
