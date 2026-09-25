@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
@@ -852,7 +851,11 @@ export function HomePage() {
   const shareUrl = fetchedUrl && info ? shareUrlForPath(window.location.origin, info.stored?.path, fetchedUrl) : null;
 
   return (
-    <ScrollArea className="h-svh w-full min-w-0">
+    // Native scroll (not the Radix ScrollArea this replaced), restyled via the .scrollbar-thin
+    // utility in index.css to keep the same look. Native scrolling on this one container is what
+    // lets overscroll-y-contain reliably reach the actual scrolling element on iOS, instead of a
+    // synthetic nested viewport whose own boundary the browser's touch-scroll physics don't see.
+    <div className="scrollbar-thin h-svh w-full min-w-0 overflow-y-auto overscroll-y-contain">
     <PullToRefresh onRefresh={goHome} />
     <div
       className={[
@@ -1311,7 +1314,7 @@ export function HomePage() {
       </AnimatePresence>
       <GithubFooter />
     </div>
-    </ScrollArea>
+    </div>
   );
 }
 

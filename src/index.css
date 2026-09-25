@@ -155,18 +155,28 @@
     height: 100%;
     overflow: hidden;
     }
+  /* A native scrollbar restyled to look like the custom (Radix ScrollArea) one it replaces on the
+     main page: same thumb color and full rounding, transparent track, thumb inset from the edges.
+     Native scrolling (not a synthetic nested scroll container) is what makes overscroll-y-contain
+     below reliably reach the real, actually-scrolling element on iOS. */
   .scrollbar-thin {
     scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
     }
   .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
+    width: 10px;
+    }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
     }
   .scrollbar-thin::-webkit-scrollbar-thumb {
     @apply bg-border;
     border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
     }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
     }
   .card-texture {
     position: relative;
