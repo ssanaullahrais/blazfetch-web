@@ -95,3 +95,23 @@ describe("friendly messages", () => {
     expect(errorTitleFor(new ApiError("SERVER_BUSY", ""))).toBe("Try again later")
   })
 })
+
+describe("messages for the backend's own limits and short links", () => {
+  it("does not blame the platform when our own rate limit is hit", () => {
+    const fetchLimit = new ApiError("PLATFORM_RATE_LIMITED", "Too many fetch requests. Please slow down.", 429);
+    const downloadLimit = new ApiError("SERVER_BUSY", "Too many download requests. Please slow down.", 429);
+    expect(friendlyErrorFor(fetchLimit)).toMatch(/sending requests too quickly/);
+    expect(friendlyErrorFor(downloadLimit)).toMatch(/sending requests too quickly/);
+    expect(errorTitleFor(fetchLimit)).toBe("Slow down");
+  });
+
+  it("still reports a real platform rate limit and a busy server as before", () => {
+    expect(friendlyErrorFor(new ApiError("PLATFORM_RATE_LIMITED", "The source platform is rate-limiting requests.", 429))).toMatch(/limiting requests/);
+    expect(friendlyErrorFor(new ApiError("SERVER_BUSY", "You have reached your concurrent download limit.", 503))).toMatch(/busy/);
+  });
+
+  it("explains a short link that could not be opened", () => {
+    expect(friendlyErrorFor(new ApiError("INVALID_URL", "This short link could not be resolved.", 400))).toMatch(/short link/);
+    expect(friendlyErrorFor(new ApiError("INVALID_URL", "The provided URL is malformed.", 400))).toMatch(/valid link/);
+  });
+});

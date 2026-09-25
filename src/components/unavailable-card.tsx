@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { detectPlatformLabel, type Tombstone } from "@/lib/api";
+import { safeHref } from "@/lib/safe-url";
 
 function formatDay(iso: string | null | undefined): string | null {
   if (!iso) return null;
@@ -35,6 +36,7 @@ export function UnavailableCard({
   const since = formatDay(tombstone.unavailableSince);
   const lastSeen = formatDay(tombstone.lastSeenAvailable);
   const platform = detectPlatformLabel(tombstone.sourceUrl);
+  const sourceHref = safeHref(tombstone.sourceUrl);
 
   return (
     <motion.div
@@ -74,9 +76,9 @@ export function UnavailableCard({
                 {retrying ? <Loader2 className="size-3 animate-spin" /> : <RefreshCw className="size-3" />}
                 Check again
               </Button>
-              {tombstone.sourceUrl && (
+              {sourceHref && (
                 <Button variant="ghost" size="sm" asChild className="h-6 w-fit gap-1 px-2 text-xs text-muted-foreground">
-                  <a href={tombstone.sourceUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={sourceHref} target="_blank" rel="noopener noreferrer">
                     Open on {platform}
                     <ExternalLink className="size-3" />
                   </a>
