@@ -17,13 +17,8 @@ const METHODS: { value: DownloadMethod; title: string; description: string }[] =
   },
   {
     value: "prepare",
-    title: "Compatible MP4",
+    title: "Compatible",
     description: "H.264/AAC MP4 that plays anywhere. Slower to start.",
-  },
-  {
-    value: "progress",
-    title: "With progress bar",
-    description: "Shows real progress while the server prepares the file.",
   },
 ];
 
