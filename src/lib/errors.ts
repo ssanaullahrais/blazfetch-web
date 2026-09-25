@@ -75,7 +75,7 @@ const MESSAGES: Record<string, string> = {
   FORMAT_UNAVAILABLE: "This quality can't be downloaded (it may be copy-protected). Try another one.",
   PROCESS_TIMEOUT: "That took too long. Please try again, or pick a lower quality.",
   FILE_TOO_LARGE: "This file is too large to download here.",
-  SERVER_BUSY: "The server is busy or you already have a download running. Try again in a moment.",
+  SERVER_BUSY: "Lots of downloads are running right now. Give it a few seconds and try again, we'll be ready!",
   VALIDATION_ERROR: "That request wasn't valid. Please check the link and try again.",
   JOB_NOT_FOUND: "That download is no longer available. Please start it again.",
   NETWORK_ERROR: "The download service could not be reached. Check your connection and try again.",
@@ -146,10 +146,17 @@ function messageFor(err: unknown): string {
   return "Something went wrong. Please try again.";
 }
 
+/** True when the server (or the visitor's own running download) is simply at capacity: a moment's wait fixes it, so it is
+ * presented as a short cool-down rather than as a failure. */
+export function isCoolDown(err: unknown): boolean {
+  return err instanceof ApiError && err.code === "SERVER_BUSY" && !isOwnRateLimit(err);
+}
+
 /** The short toast title for a failed fetch. */
 export function errorTitleFor(err: unknown): string {
   if (err instanceof ApiError) {
     if (isOwnRateLimit(err)) return "Slow down";
+    if (isCoolDown(err)) return "Cooling down";
     if (err.code === "UNSUPPORTED_PLATFORM") return "Not supported";
     if (err.code === "MEDIA_NOT_FOUND" || err.code === "MEDIA_UNAVAILABLE") return "Video not found";
     if (err.code === "PRIVATE_MEDIA" || err.code === "LOGIN_REQUIRED" || err.code === "AGE_RESTRICTED") return "Can't download this";

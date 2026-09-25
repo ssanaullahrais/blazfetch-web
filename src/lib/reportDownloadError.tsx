@@ -1,6 +1,6 @@
 import toast from "@/lib/toast";
 import { ErrorToast } from "@/components/error-toast";
-import { friendlyErrorFor } from "@/lib/errors";
+import { friendlyErrorFor, isCoolDown } from "@/lib/errors";
 import { playErrorSound } from "@/lib/sound";
 
 /** Shared error reporting for every download/fetch trigger: friendly toast plus optional sound. */
@@ -15,6 +15,9 @@ export function reportDownloadError(
   console.error(`[${actionLabel.toLowerCase()}]`, rawMessage);
   void _sourceUrl;
   const message = friendlyErrorFor(err);
-  toast.error(<ErrorToast title={`${actionLabel} failed`} message={message} />, toastId ? { id: toastId } : undefined);
-  if (soundEnabled) playErrorSound();
+  // A busy server is a short cool-down, not a failure: friendly wording, no red, no error sound.
+  const coolDown = isCoolDown(err);
+  const title = coolDown ? "Cooling down" : `${actionLabel} failed`;
+  toast.error(<ErrorToast title={title} message={message} calm={coolDown} />, toastId ? { id: toastId } : undefined);
+  if (soundEnabled && !coolDown) playErrorSound();
 }
