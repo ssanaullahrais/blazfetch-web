@@ -2,16 +2,27 @@ import { useEffect, useState } from "react";
 import { API } from "@/lib/api";
 import { notifyStatsChanged, onStatsChanged } from "@/lib/stats-events";
 
-export type SiteStats = { fetches: number; downloads: number };
+export type SiteStats = { fetches: number; downloads: number; online?: number };
+
+/** Off only when explicitly set to "false" — shown by default, matching today's behavior. Build-time
+ * (VITE_*), so an operator sets these once for their deployment; there is no per-visitor override. */
+export const SHOW_FETCH_STATS = import.meta.env.VITE_SHOW_FETCH_STATS !== "false";
+export const SHOW_DOWNLOAD_STATS = import.meta.env.VITE_SHOW_DOWNLOAD_STATS !== "false";
+export const SHOW_ONLINE_VISITORS = import.meta.env.VITE_SHOW_ONLINE_VISITORS !== "false";
+
+function isCount(value: unknown): value is number {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
 
 function parseStats(data: unknown): SiteStats | null {
   if (!data || typeof data !== "object") return null;
   const value = data as Record<string, unknown>;
   if (value.success === false) return null;
-  const { fetches, downloads } = value;
-  return typeof fetches === "number" && Number.isSafeInteger(fetches) && fetches >= 0 &&
-    typeof downloads === "number" && Number.isSafeInteger(downloads) && downloads >= 0
-    ? { fetches, downloads } : null;
+  const { fetches, downloads, online } = value;
+  if (!isCount(fetches) || !isCount(downloads)) return null;
+  // online is newer than fetches/downloads: a backend that hasn't been upgraded yet simply omits it, and
+  // that must not invalidate the rest of the payload — the footer just shows two counts instead of three.
+  return isCount(online) ? { fetches, downloads, online } : { fetches, downloads };
 }
 
 /** All-time totals from the backend (GET /api/v1/stats). Resolves to null when they are not available. */

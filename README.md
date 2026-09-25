@@ -146,6 +146,7 @@ To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
 | `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
 | `VITE_ENABLE_AUDIO_PREVIEW` | off | `true` shows the play button on audio rows (previews are off because most audio is M4A/WebM) |
 | `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks Fastest, Compatible MP4 and With progress bar in Settings |
+| `VITE_SHOW_FETCH_STATS`, `VITE_SHOW_DOWNLOAD_STATS`, `VITE_SHOW_ONLINE_VISITORS` | on | Set any to `false` to hide that counter from the footer. "Online" also needs a backend new enough to send it (`ONLINE_VISITOR_WINDOW_SECONDS` in the API) |
 
 The proxy target for `pnpm dev` and `pnpm preview` is in [vite.config.ts](vite.config.ts).
 
