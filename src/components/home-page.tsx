@@ -685,7 +685,7 @@ export function HomePage() {
   }
 
   /**
-   * The "With progress bar" method: POST /download starts a job on the server, GET /jobs/:id reports real
+   * The job-based download flow (no longer offered as a choice in settings): POST /download starts a job on the server, GET /jobs/:id reports real
    * progress while it prepares the file, then the finished file goes to the browser. Stop cancels the job.
    */
   async function downloadWithProgress(

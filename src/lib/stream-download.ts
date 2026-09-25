@@ -7,7 +7,7 @@ import { notifyStatsChanged } from "@/lib/stats-events";
 /**
  * How the backend delivers a file (GET /api/v1/stream?mode=...):
  * - `auto`: stream straight through, and if that can't work for a source, prepare the file on the server.
- * - `stream`: stream only. Fastest, but a few sources can't be streamed and fail.
+ * - `stream`: stream only ("Fastest" in settings). A few sources can't be streamed and fail.
  * - `prepare`: build a compatible H.264/AAC file on the server first. Slower start, plays everywhere.
  */
 export type DeliveryMode = "auto" | "stream" | "prepare";
