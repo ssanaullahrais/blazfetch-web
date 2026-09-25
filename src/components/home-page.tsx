@@ -1945,17 +1945,6 @@ function FormatRow({
                   {sizeLabel}
                 </Badge>
               )}
-              {best ? (
-                <Badge className={`h-5 py-0 px-1.5 text-[10px] leading-none font-semibold ${BEST_BADGE_CLASS}`}>
-                  ★ Best
-                </Badge>
-              ) : (
-                quality && (
-                  <Badge className={`h-5 py-0 px-1.5 text-[10px] leading-none font-semibold ${QUALITY_BADGE_CLASSES[quality.tier]}`}>
-                    {quality.label}
-                  </Badge>
-                )
-              )}
               {/* On mobile this sits at the end of the title line instead of
                   down by the Download button; the desktop copy (hidden here,
                   shown next to Download) covers >=sm. */}
@@ -1965,7 +1954,24 @@ function FormatRow({
                 </span>
               )}
             </div>
-            {sub && <span className="truncate text-xs text-muted-foreground">{sub}</span>}
+            {(sub || best || quality) && (
+              <div className="flex min-w-0 items-center gap-1.5">
+                {best ? (
+                  <Badge className={`h-5 shrink-0 py-0 px-1.5 text-[10px] leading-none font-semibold ${BEST_BADGE_CLASS}`}>
+                    ★ Best
+                  </Badge>
+                ) : (
+                  quality && (
+                    <Badge
+                      className={`h-5 shrink-0 py-0 px-1.5 text-[10px] leading-none font-semibold ${QUALITY_BADGE_CLASSES[quality.tier]}`}
+                    >
+                      {quality.label}
+                    </Badge>
+                  )
+                )}
+                {sub && <span className="min-w-0 truncate text-xs text-muted-foreground">{sub}</span>}
+              </div>
+            )}
           </div>
         </div>
         <div className="flex flex-col gap-1.5 sm:flex-row sm:shrink-0 sm:items-center sm:justify-end">
