@@ -18,6 +18,8 @@ leaks, rotate it in its dashboard first.
 - **No secrets in the browser:** the Cloudflare Turnstile site key is public by design and comes from the backend; the secret
   key exists only on the server. The app stores only display preferences in the browser.
 - **Downloads:** files go straight to the browser's download manager; nothing is kept in memory or on disk by the app.
+- **Content-Security-Policy:** docs/DEPLOYMENT.md gives a ready policy that allows scripts only from the site itself and
+  Cloudflare Turnstile. It has been checked against the built app, with and without Turnstile.
 
 ## What you must do when you deploy
 
