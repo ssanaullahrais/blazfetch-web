@@ -54,16 +54,22 @@ export function PwaUpdatePrompt() {
     <div
       role="status"
       aria-live="polite"
-      className="fixed inset-x-4 z-50 mx-auto flex max-w-sm items-center gap-3 rounded-xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg sm:right-auto sm:left-4 sm:mx-0"
+      className="fixed inset-x-3 z-50 mx-auto flex max-w-xs items-center gap-2 rounded-xl border bg-popover p-2 text-xs text-popover-foreground shadow-lg sm:inset-x-4 sm:right-4 sm:left-auto sm:mx-0 sm:max-w-sm sm:gap-3 sm:rounded-2xl sm:p-3 sm:text-sm"
       style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
     >
-      <RefreshCw className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="flex-1">A new version is available.</span>
-      <Button size="sm" onClick={reload} disabled={reloading}>
+      <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full border bg-background sm:size-9">
+        <RefreshCw className="size-3.5 sm:size-4" aria-hidden />
+      </span>
+      <span className="min-w-0 flex-1">
+        <p className="truncate font-medium">Update available</p>
+        <p className="truncate text-[11px] text-muted-foreground sm:text-xs">A new version is available.</p>
+      </span>
+      <Button size="xs" className="sm:h-8 sm:px-3 sm:text-sm" onClick={reload} disabled={reloading}>
         {reloading ? "Reloading…" : "Reload"}
       </Button>
       <Button
-        size="icon-sm"
+        size="icon-xs"
+        className="sm:size-8"
         variant="ghost"
         aria-label="Later"
         onClick={() => {
