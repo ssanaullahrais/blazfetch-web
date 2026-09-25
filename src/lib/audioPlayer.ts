@@ -119,6 +119,17 @@ export function togglePlay(key: string, src: string) {
   notify();
 }
 
+/** Stops playback and lets go of the loaded file, so the memory behind a previewed track can be freed. */
+export function stopPlayback() {
+  if (!audio) return;
+  audio.pause();
+  audio.removeAttribute("src");
+  audio.load();
+  ownerKey = null;
+  notify();
+  notifyProgress();
+}
+
 export function seekTo(key: string, fraction: number) {
   if (ownerKey !== key || !audio || !audio.duration) return;
   audio.currentTime = Math.max(0, Math.min(1, fraction)) * audio.duration;
