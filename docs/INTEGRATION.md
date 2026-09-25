@@ -67,6 +67,9 @@ removes its temporary copy once the last byte has been sent, so a finished job c
   best bitrate first. DRC variants are dropped.
 - **Row order:** the list shows the first 8 video and 5 audio rows. "Sort video by smallest size" and "Sort audio by
   compatibility" only reorder those rows (`src/lib/format-order.ts`); they never swap in other formats.
+- **Audio as MP3:** when the backend runs with `AUDIO_FORCE_MP3=true` (the recommended setting in its `.env.example`), every entry of `audioFormats[]`
+  arrives as `ext: "mp3"` with `isConverted: true` and an estimated size, so the audio tab lists MP3 rows and the file is named `.mp3`. The
+  app needs no setting for it. With `VITE_ENABLE_AUDIO_PREVIEW=true` the play button works on every row.
 - **No audio track at the source:** the `/fetch/audio` result contains a synthetic `mp3-from-<formatId>` option,
   which the backend converts with ffmpeg.
 - **Playlist:** `playlist.items[]` become a list; opening an entry fetches that video.
