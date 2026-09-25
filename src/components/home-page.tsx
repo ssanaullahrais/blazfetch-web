@@ -32,6 +32,7 @@ import {
   ListVideo,
 } from "lucide-react";
 import { PlatformIcons } from "@/components/platform-icons";
+import { ProgressiveList } from "@/components/progressive-list";
 import { setDownloadsBusy } from "@/lib/busy";
 import { FormatDetailsDialog } from "@/components/format-details-dialog";
 import { DownloadProgressButton } from "@/components/download/download-progress-button";
@@ -1568,8 +1569,8 @@ function CarouselVideoList({
   const videos = info.carouselVideos ?? [];
 
   return (
-    <>
-      {videos.map((video, index) => {
+    <ProgressiveList items={videos}>
+      {(visibleVideos) => visibleVideos.map((video, index) => {
         const key = keyFor("video", `carousel-${video.id}`);
         const title = `${sanitizeFilenameLocal(info.title)}-${index + 1}`;
         return (
@@ -1580,6 +1581,7 @@ function CarouselVideoList({
             sizeLabel={formatBytes(video.filesize) ?? undefined}
             durationLabel={video.duration != null ? formatDuration(video.duration) : undefined}
             thumbnail={video.thumbnail}
+            videoPreviewUrl={video.previewUrl}
             thumbnailSize="lg"
             dense
             mediaType="video"
@@ -1589,7 +1591,7 @@ function CarouselVideoList({
           />
         );
       })}
-    </>
+    </ProgressiveList>
   );
 }
 
@@ -1611,8 +1613,8 @@ function ImageFormatList({
   const images = info.images ?? [];
 
   return (
-    <>
-      {images.map((image, index) => {
+    <ProgressiveList items={images}>
+      {(visibleImages) => visibleImages.map((image, index) => {
         const key = keyFor("video", `img-${index}`);
         const title = `${sanitizeFilenameLocal(info.title)}-${index + 1}`;
         return (
@@ -1632,7 +1634,7 @@ function ImageFormatList({
           />
         );
       })}
-    </>
+    </ProgressiveList>
   );
 }
 
@@ -1874,6 +1876,7 @@ function FormatRow({
   previewLoading,
   format,
   thumbnail,
+  videoPreviewUrl,
   dense,
   thumbnailSize = "sm",
   selected,
@@ -1901,6 +1904,8 @@ function FormatRow({
    * list is the same media and doesn't need one, but every row in a
    * playlist or image gallery is a *different* item. */
   thumbnail?: string | null;
+  /** No thumbnail from the backend: the browser shows this video's first frame instead (metadata only, nothing plays). */
+  videoPreviewUrl?: string;
   /** Playlist/gallery rows: single-line truncated title instead of the
    * free-wrapping label a single video's short format label uses, so a
    * long video title doesn't blow up the row's height. */
@@ -1955,6 +1960,16 @@ function FormatRow({
               src={thumbnail}
               alt=""
               className={`${thumbnailSize === "lg" ? "size-14" : "size-9"} shrink-0 rounded-md object-cover`}
+            />
+          ) : videoPreviewUrl ? (
+            <video
+              src={`${videoPreviewUrl}#t=1`}
+              preload="metadata"
+              muted
+              playsInline
+              aria-hidden="true"
+              tabIndex={-1}
+              className={`${thumbnailSize === "lg" ? "size-14" : "size-9"} pointer-events-none shrink-0 rounded-md bg-muted object-cover`}
             />
           ) : (
             <div

@@ -193,6 +193,8 @@ export type CarouselVideoItem = {
   formatId: string;
   ext: string;
   filesize: number | null;
+  /** The video's own link, used only to show its first frame when the backend has no thumbnail for it. */
+  previewUrl?: string;
 };
 
 /** Facts about the stored copy that the UI shows or links to. */
@@ -425,6 +427,7 @@ function toMediaInfoRaw(data: ApiFetchResponse): MediaInfo {
           formatId: best.formatId,
           ext: best.ext,
           filesize: best.filesizeBytes ?? null,
+          previewUrl: !item.thumbnail && best.url && /^https:\/\//i.test(best.url) ? best.url : undefined,
         });
       }
     });
