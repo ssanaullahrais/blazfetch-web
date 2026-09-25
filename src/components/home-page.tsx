@@ -1750,14 +1750,18 @@ function AudioFormatList({
     })}.${ext || "m4a"}`;
   // The extension hint for "Best quality audio" matches the server's own best pick (see bestAudioFormat),
   // regardless of the compatibility sort below — that toggle only reorders the list underneath.
-  const bestExt = bestAudioFormat(info.audioFormats)?.ext;
+  const bestAudio = bestAudioFormat(info.audioFormats);
+  const bestExt = bestAudio?.ext;
+  const bestLabel = ["Best quality audio", formatBitrate(bestAudio?.abr), bestExt?.toUpperCase()].filter(Boolean).join(" · ");
+  const bestSize = bestAudio ? sizeLabelFor(bestAudio.filesize, bestAudio.filesizeApprox) : undefined;
   const listedFormats = audioRows(info.audioFormats, { byCompatibility: prefs.sortAudioByCompatibility });
 
   return (
     <>
       <FormatRow
-        label="Best quality audio"
+        label={bestLabel}
         sub={nameFor(bestExt)}
+        sizeLabel={bestSize}
         best
         mediaType="audio"
         status={downloadStatus[keyFor("audio")]}
