@@ -4,6 +4,26 @@
  */
 export const PWA_ENABLED = import.meta.env.VITE_ENABLE_PWA !== "false";
 
+/**
+ * True on a phone or tablet (Android, iPhone/iPad, and other touch handhelds), false on desktop/laptop browsers.
+ * The install prompt, floating "Install app" card and service worker are desktop-only regardless of VITE_ENABLE_PWA,
+ * so a mobile visitor always gets the plain website even when the build ships the app for everyone else.
+ */
+function isMobileOrTabletDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const uaData = (navigator as Navigator & { userAgentData?: { mobile?: boolean } }).userAgentData;
+  if (uaData?.mobile) return true;
+  const ua = navigator.userAgent || "";
+  if (/android|iphone|ipad|ipod|windows phone|blackberry|iemobile|opera mini|mobile|tablet|silk|kindle|playbook/i.test(ua)) {
+    return true;
+  }
+  // iPadOS 13+ identifies itself as a Mac but, unlike a real Mac, has multi-touch.
+  return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+}
+
+/** PWA_ENABLED narrowed to desktop: the switch to check anywhere the app decides whether to act like an installable app. */
+export const PWA_ENABLED_ON_DEVICE = PWA_ENABLED && !isMobileOrTabletDevice();
+
 /** How often an open (or installed and resumed) app asks the server whether a new version was deployed. */
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
 
