@@ -144,8 +144,8 @@ export function InstallToast() {
           <Download className="size-4" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
-          <p className="font-medium">Install {site.name}</p>
-          <p className="truncate text-xs text-muted-foreground">Open it like an app, right from your device.</p>
+          <p className="font-medium">Install App</p>
+          <p className="truncate text-xs text-muted-foreground">{site.name} Install App Now!</p>
         </span>
         <Button size="sm" onClick={install} tabIndex={visible ? 0 : -1}>
           Install
