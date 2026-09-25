@@ -875,17 +875,18 @@ export function HomePage() {
         return next;
       });
     } finally {
-      if (!isCurrent()) return;
-      setPreviewLoading((p) => {
-        const next = { ...p };
-        delete next[key];
-        return next;
-      });
-      setPreviewProgress((p) => {
-        const next = { ...p };
-        delete next[key];
-        return next;
-      });
+      if (isCurrent()) {
+        setPreviewLoading((p) => {
+          const next = { ...p };
+          delete next[key];
+          return next;
+        });
+        setPreviewProgress((p) => {
+          const next = { ...p };
+          delete next[key];
+          return next;
+        });
+      }
     }
   }
 
