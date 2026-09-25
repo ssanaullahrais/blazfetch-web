@@ -60,7 +60,7 @@ export function SettingsMenu() {
         </Button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-64 gap-0 p-2">
-        <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Download method</p>
+        <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preferences</p>
         <div role="radiogroup" aria-label="Download method" className="flex flex-col">
           {METHODS.map((method) => {
             const selected = prefs.deliveryMode === method.value;
@@ -93,7 +93,7 @@ export function SettingsMenu() {
 
         <div className="my-1.5 h-px bg-border" />
         <div className="flex items-center justify-between gap-2 px-2 py-1 text-sm">
-          <span>Open on</span>
+          <span>Default Tab</span>
           <div className="flex gap-1">
             {(["video", "audio"] as const).map((mode) => (
               <Button
@@ -109,6 +109,11 @@ export function SettingsMenu() {
         </div>
         <Toggle label="Fetch on paste" checked={prefs.fetchOnPaste} onChange={set("fetchOnPaste")} />
         <Toggle label="Sounds" checked={prefs.soundEnabled} onChange={set("soundEnabled")} />
+        <Toggle
+          label="Sort audio by compatibility"
+          checked={prefs.sortAudioByCompatibility}
+          onChange={set("sortAudioByCompatibility")}
+        />
       </PopoverContent>
     </Popover>
   );

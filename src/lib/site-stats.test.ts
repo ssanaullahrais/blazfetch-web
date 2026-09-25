@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { formatCount, getSiteStats, watchSiteStats } from "@/lib/site-stats";
+import { bumpDownloadCount, formatCount, getSiteStats, resetDownloadCountForTests, watchSiteStats } from "@/lib/site-stats";
 
 describe("formatCount", () => {
   it("keeps the footer short", () => {
@@ -49,9 +49,10 @@ describe('live site stats', () => {
     Source.instances = [];
     doc = Object.assign(new EventTarget(), { visibilityState: 'visible' });
     vi.stubGlobal('document', doc);
-    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('window', new EventTarget()); // notifyStatsChanged (used by bumpDownloadCount) dispatches here
     vi.stubGlobal('EventSource', Source);
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ fetches: 10, downloads: 2 }) })));
+    resetDownloadCountForTests();
   });
   afterEach(() => { stop?.(); stop = undefined; vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
 
@@ -108,5 +109,74 @@ describe('live site stats', () => {
     stop(); stop = undefined;
     await vi.advanceTimersByTimeAsync(4000);
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('bumpDownloadCount', () => {
+  class Source {
+    static instances: Source[] = [];
+    onmessage: ((event: { data: string }) => void) | null = null;
+    onerror: (() => void) | null = null;
+    close = vi.fn();
+    constructor() { Source.instances.push(this); }
+    send(fetches: number, downloads: number) { this.onmessage?.({ data: JSON.stringify({ success: true, fetches, downloads }) }); }
+  }
+  let stop: (() => void) | undefined;
+  beforeEach(() => {
+    vi.useFakeTimers();
+    Source.instances = [];
+    vi.stubGlobal('document', Object.assign(new EventTarget(), { visibilityState: 'visible' }));
+    vi.stubGlobal('window', new EventTarget());
+    vi.stubGlobal('EventSource', Source);
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ fetches: 0, downloads: 0 }) })));
+    resetDownloadCountForTests();
+  });
+  afterEach(() => { stop?.(); stop = undefined; vi.clearAllTimers(); vi.useRealTimers(); vi.unstubAllGlobals(); });
+
+  it('shows a download the moment it starts, without waiting for the server to confirm it', () => {
+    const changed = vi.fn();
+    stop = watchSiteStats(changed);
+    Source.instances[0].send(10, 5); // the server's own total, unaffected by the click yet
+    expect(changed).toHaveBeenLastCalledWith({ fetches: 10, downloads: 5 });
+
+    bumpDownloadCount();
+    // notifyStatsChanged only signals "something happened"; watchSiteStats still has to act on it. It does
+    // that through the very same GET /stats poll every other trigger uses (see the 'applies pushed totals'
+    // test above) — bumpDownloadCount doesn't invent a new delivery path, it only adds to what that poll
+    // reports once it runs, which the next pushed snapshot below stands in for here.
+    Source.instances[0].send(10, 5); // server total hasn't moved yet, but the click already counts
+    expect(changed).toHaveBeenLastCalledWith({ fetches: 10, downloads: 6 });
+  });
+
+  it('stops adding to the total once the server confirms the same download, instead of double-counting it', () => {
+    const changed = vi.fn();
+    stop = watchSiteStats(changed);
+    Source.instances[0].send(10, 5);
+    bumpDownloadCount();
+    Source.instances[0].send(10, 5);
+    expect(changed).toHaveBeenLastCalledWith({ fetches: 10, downloads: 6 }); // +1 pending, as above
+
+    Source.instances[0].send(11, 6); // the server has now confirmed it (and one more fetch, unrelated)
+    expect(changed).toHaveBeenLastCalledWith({ fetches: 11, downloads: 6 }); // no more +1: nothing left pending
+
+    Source.instances[0].send(11, 6); // stays put — pending doesn't go negative and linger
+    expect(changed).toHaveBeenLastCalledWith({ fetches: 11, downloads: 6 });
+  });
+
+  it('keeps counting several downloads started before any of them are confirmed', () => {
+    const changed = vi.fn();
+    stop = watchSiteStats(changed);
+    Source.instances[0].send(10, 5);
+    bumpDownloadCount();
+    bumpDownloadCount();
+    bumpDownloadCount();
+    Source.instances[0].send(10, 5);
+    expect(changed).toHaveBeenLastCalledWith({ fetches: 10, downloads: 8 }); // +3 pending
+
+    Source.instances[0].send(10, 6); // the server confirms just one of the three
+    expect(changed).toHaveBeenLastCalledWith({ fetches: 10, downloads: 8 }); // 6 + 2 still-pending = 8
+
+    Source.instances[0].send(10, 8); // the server catches all the way up
+    expect(changed).toHaveBeenLastCalledWith({ fetches: 10, downloads: 8 }); // nothing pending left to add
   });
 });
