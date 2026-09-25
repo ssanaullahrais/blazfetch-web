@@ -1,4 +1,4 @@
-// The job-based download flow (no longer offered as a choice in settings): POST /download starts a job on the
+// The job-based download flow, used for the Compatible delivery method: POST /download starts a job on the
 // server, GET /jobs/:id reports real progress, and GET /downloads/:id delivers the finished file.
 import { API, request } from "@/lib/api";
 import { coerceMediaUrl } from "@/lib/media-url";

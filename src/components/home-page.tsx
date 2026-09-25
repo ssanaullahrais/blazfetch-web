@@ -593,6 +593,26 @@ export function HomePage() {
     start();
   }
 
+  /**
+   * Paces `progress[key]` upward while a download the browser owns (Automatic/Fastest, via
+   * startBrowserDownload) is preparing — that path never reads the response body, by design, so large
+   * files never sit in memory, but it also means the page has no real byte count to show. Rather than
+   * leave the CTA's fill bar and percentage blank, it climbs on the same ever-slowing curve
+   * fetchStreamBlob already uses when *it* doesn't know a total size, capped short of 100% until the
+   * caller's own success/failure signal arrives. Returns a function that stops the timer; the caller is
+   * responsible for setting the final value (100 on success, cleared on failure).
+   */
+  function simulateProgress(key: FormatKey): () => void {
+    const startedAt = Date.now();
+    const TIMESCALE_MS = 4000; // ~60% at 4s, ~87% at 10s, ~95% cap from there
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const percent = Math.round(95 * (1 - Math.exp(-elapsed / TIMESCALE_MS)));
+      setProgress((p) => ({ ...p, [key]: percent }));
+    }, 200);
+    return () => clearInterval(timer);
+  }
+
   async function runDownload(
     mode: "video" | "audio",
     format_id?: string,
@@ -631,23 +651,38 @@ export function HomePage() {
     try {
       setProgress((p) => ({ ...p, [key]: 0 }));
       setDownloadStatus((s) => ({ ...s, [key]: "preparing" }));
-      if (prefs.deliveryMode === "progress") {
+      // A visitor whose stored preference still says "progress" (the old, now-removed "Tracked" picker
+      // option) gets exactly what that used to mean: the job pipeline. There's no longer a "progress"
+      // mode to hand to startBrowserDownload, so it's resolved to its closest equivalent, "prepare",
+      // right here — the only two values that can reach the else branch below are "auto" and "stream".
+      const deliveryMode = prefs.deliveryMode === "progress" ? "prepare" : prefs.deliveryMode;
+      if (deliveryMode === "prepare") {
+        // Compatible: the server always builds the file first, so real, server-reported percent is
+        // available for the whole "preparing" wait — use it instead of pacing a guess.
         await downloadWithProgress(mode, key, urlOverride ?? fetchedUrl, format_id, controller.signal, isCurrent);
       } else {
-        // One request straight to the browser's download manager. It resolves when bytes start flowing
-        // (or rejects with the server's own error), so "Preparing" ends exactly when the download begins.
-        await startBrowserDownload(
-          {
-            url: urlOverride ?? fetchedUrl,
-            kind: mode,
-            formatId: format_id,
-            filename: buildName(mode, media, formatMeta),
-            mode: prefs.deliveryMode,
-          },
-          { signal: controller.signal }
-        );
+        // Automatic/Fastest: one request straight to the browser's download manager. It resolves when
+        // bytes start flowing (or rejects with the server's own error), so "Preparing" ends exactly when
+        // the download begins — but the page never sees a byte count along the way, so pace the bar
+        // instead of leaving it blank (see simulateProgress).
+        const stopSimulating = simulateProgress(key);
+        try {
+          await startBrowserDownload(
+            {
+              url: urlOverride ?? fetchedUrl,
+              kind: mode,
+              formatId: format_id,
+              filename: buildName(mode, media, formatMeta),
+              mode: deliveryMode,
+            },
+            { signal: controller.signal }
+          );
+        } finally {
+          stopSimulating();
+        }
       }
       if (!isCurrent()) return;
+      setProgress((p) => ({ ...p, [key]: 100 }));
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
       closeStopDialogForKeys([key]);
       if (prefs.soundEnabled) playDownloadCompleteSound();
@@ -684,8 +719,10 @@ export function HomePage() {
   }
 
   /**
-   * The job-based download flow (no longer offered as a choice in settings): POST /download starts a job on the server, GET /jobs/:id reports real
-   * progress while it prepares the file, then the finished file goes to the browser. Stop cancels the job.
+   * The job-based download flow, used for the Compatible delivery method: POST /download starts a job on
+   * the server, GET /jobs/:id reports real progress while it prepares the file, then the finished file
+   * goes to the browser. Stop cancels the job. This is the one delivery path with a real byte-based
+   * percentage — Automatic/Fastest instead pace their CTA with simulateProgress, above.
    */
   async function downloadWithProgress(
     mode: "video" | "audio",
@@ -730,11 +767,20 @@ export function HomePage() {
     try {
       setProgress((p) => ({ ...p, [key]: 0 }));
       setDownloadStatus((s) => ({ ...s, [key]: "preparing" }));
-      await startBrowserDownload(
-        { url: fetchedUrl, kind: "video", formatId, filename: sanitizeFilenameLocal(info?.title ?? "video"), mode: "prepare" },
-        { signal: controller.signal }
-      );
+      // Always mode: "prepare" (a carousel item is served from the post link, not its own direct URL) —
+      // still handed to the browser's download manager the same as any other startBrowserDownload call, so
+      // it gets the same paced progress, not the job pipeline's real percent (see simulateProgress above).
+      const stopSimulating = simulateProgress(key);
+      try {
+        await startBrowserDownload(
+          { url: fetchedUrl, kind: "video", formatId, filename: sanitizeFilenameLocal(info?.title ?? "video"), mode: "prepare" },
+          { signal: controller.signal }
+        );
+      } finally {
+        stopSimulating();
+      }
       if (!isCurrent()) return;
+      setProgress((p) => ({ ...p, [key]: 100 }));
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
       closeStopDialogForKeys([key]);
       if (prefs.soundEnabled) playDownloadCompleteSound();
@@ -833,7 +879,8 @@ export function HomePage() {
   // otherwise the brand mark reflects the info-fetch request instead.
   const preparingKeys = (Object.keys(downloadStatus) as FormatKey[]).filter((k) => downloadStatus[k] === "preparing");
   const isDownloading = preparingKeys.length > 0;
-  // Downloads handed to the browser have no percentage; only an audio preview does. Without one the ring spins.
+  // Real for Compatible/an audio preview, simulated for Automatic/Fastest (see simulateProgress) — either
+  // way progress[key] is always populated while preparing, so this ring is never left to just spin.
   const knownProgress = preparingKeys.map((k) => progress[k] ?? 0).filter((v) => v > 0);
   const brandProgress = isDownloading
     ? knownProgress.length
@@ -1220,6 +1267,7 @@ export function HomePage() {
                 <ImageFormatList
                   info={info}
                   downloadStatus={downloadStatus}
+                  progress={progress}
                   runImageDownload={runImageDownload}
                 />
               </TabsContent>
@@ -1230,6 +1278,7 @@ export function HomePage() {
                     <CarouselVideoList
                       info={info}
                       downloadStatus={downloadStatus}
+                      progress={progress}
                       runCarouselVideoDownload={runCarouselVideoDownload}
                     />
                   </TabsContent>
@@ -1239,6 +1288,7 @@ export function HomePage() {
                     <ImageFormatList
                       info={info}
                       downloadStatus={downloadStatus}
+                      progress={progress}
                       runImageDownload={runImageDownload}
                     />
                   </TabsContent>
@@ -1254,6 +1304,7 @@ export function HomePage() {
                         info={info}
                         prefs={prefs}
                         downloadStatus={downloadStatus}
+                        progress={progress}
                         runDownload={runDownload}
                         guardedStart={guardedStart}
                       />
@@ -1262,6 +1313,7 @@ export function HomePage() {
                         info={info}
                         prefs={prefs}
                         downloadStatus={downloadStatus}
+                        progress={progress}
                         runDownload={runDownload}
                         guardedStart={guardedStart}
                         bestOnly={prefs.autoDownloadBest}
@@ -1277,6 +1329,7 @@ export function HomePage() {
                       info={info}
                       prefs={prefs}
                       downloadStatus={downloadStatus}
+                      progress={progress}
                       runDownload={runDownload}
                       guardedStart={guardedStart}
                       playAudio={playAudio}
@@ -1288,6 +1341,7 @@ export function HomePage() {
                       info={info}
                       prefs={prefs}
                       downloadStatus={downloadStatus}
+                      progress={progress}
                       runDownload={runDownload}
                       guardedStart={guardedStart}
                       playAudio={playAudio}
@@ -1329,6 +1383,7 @@ function PlaylistFormatList({
   info,
   prefs,
   downloadStatus,
+  progress,
   runDownload,
   guardedStart,
   playAudio,
@@ -1339,6 +1394,8 @@ function PlaylistFormatList({
   info: MediaInfo;
   prefs: ReturnType<typeof usePreferences>["prefs"];
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
+  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  progress: Record<FormatKey, number>;
   runDownload: (
     mode: "video" | "audio",
     format_id?: string,
@@ -1404,6 +1461,7 @@ function PlaylistFormatList({
             dense
             mediaType={mode}
             status={downloadStatus[key]}
+            progress={progress[key]}
             onDownload={() =>
               guardedStart(mode, key, downloadStatus[key], () =>
                 runDownload(mode, undefined, entryMedia, undefined, entry.url, key)
@@ -1438,10 +1496,13 @@ function PlaylistFormatList({
 function CarouselVideoList({
   info,
   downloadStatus,
+  progress,
   runCarouselVideoDownload,
 }: {
   info: MediaInfo;
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
+  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  progress: Record<FormatKey, number>;
   runCarouselVideoDownload: (formatId: string, key: FormatKey) => void;
 }) {
   const videos = info.carouselVideos ?? [];
@@ -1463,6 +1524,7 @@ function CarouselVideoList({
             dense
             mediaType="video"
             status={downloadStatus[key]}
+            progress={progress[key]}
             onDownload={() => runCarouselVideoDownload(video.formatId, key)}
           />
         );
@@ -1477,10 +1539,13 @@ function CarouselVideoList({
 function ImageFormatList({
   info,
   downloadStatus,
+  progress,
   runImageDownload,
 }: {
   info: MediaInfo;
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
+  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  progress: Record<FormatKey, number>;
   runImageDownload: (imageUrl: string, key: FormatKey, title: string) => void;
 }) {
   const images = info.images ?? [];
@@ -1501,6 +1566,7 @@ function ImageFormatList({
             dense
             mediaType="video"
             status={downloadStatus[key]}
+            progress={progress[key]}
             doneLabel="Saved"
             onDownload={() => runImageDownload(image.url, key, title)}
           />
@@ -1522,6 +1588,7 @@ function VideoFormatList({
   info,
   prefs,
   downloadStatus,
+  progress,
   runDownload,
   guardedStart,
   bestOnly = false,
@@ -1529,6 +1596,8 @@ function VideoFormatList({
   info: MediaInfo;
   prefs: ReturnType<typeof usePreferences>["prefs"];
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
+  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  progress: Record<FormatKey, number>;
   runDownload: (mode: "video" | "audio", format_id?: string, mediaOverride?: MediaInfo, formatMeta?: MediaFormat) => void;
   guardedStart: (
     mode: "video" | "audio",
@@ -1558,6 +1627,7 @@ function VideoFormatList({
           sub={nameFor()}
           mediaType="video"
           status={downloadStatus[keyFor("video")]}
+          progress={progress[keyFor("video")]}
           onDownload={() =>
             guardedStart("video", keyFor("video"), downloadStatus[keyFor("video")], () => runDownload("video"))
           }
@@ -1578,6 +1648,7 @@ function VideoFormatList({
           best={i === 0}
           mediaType="video"
           status={downloadStatus[key]}
+          progress={progress[key]}
           onDownload={() =>
             guardedStart(
               "video",
@@ -1598,6 +1669,7 @@ function AudioFormatList({
   info,
   prefs,
   downloadStatus,
+  progress,
   runDownload,
   guardedStart,
   playAudio,
@@ -1608,6 +1680,8 @@ function AudioFormatList({
   info: MediaInfo;
   prefs: ReturnType<typeof usePreferences>["prefs"];
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
+  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  progress: Record<FormatKey, number>;
   runDownload: (mode: "video" | "audio", format_id?: string, mediaOverride?: MediaInfo, formatMeta?: MediaFormat) => void;
   guardedStart: (
     mode: "video" | "audio",
@@ -1642,6 +1716,7 @@ function AudioFormatList({
         best
         mediaType="audio"
         status={downloadStatus[keyFor("audio")]}
+        progress={progress[keyFor("audio")]}
         onDownload={() =>
           guardedStart("audio", keyFor("audio"), downloadStatus[keyFor("audio")], () => runDownload("audio"))
         }
@@ -1663,6 +1738,7 @@ function AudioFormatList({
           format={f}
           mediaType="audio"
           status={downloadStatus[key]}
+          progress={progress[key]}
           onDownload={() =>
             guardedStart(
               "audio",
@@ -1699,6 +1775,7 @@ function FormatRow({
   best,
   mediaType,
   status,
+  progress,
   onDownload,
   playKey,
   onPlayAudio: onPlayAudioRequested,
@@ -1719,6 +1796,8 @@ function FormatRow({
   best?: boolean;
   mediaType?: "video" | "audio";
   status?: "queued" | "preparing" | "ready" | "downloaded";
+  /** 0–100 while `status === "preparing"` — real for the Compatible delivery method, simulated otherwise. */
+  progress?: number;
   onDownload: () => void;
   playKey?: string;
   onPlayAudio?: () => void;
@@ -1874,6 +1953,7 @@ function FormatRow({
                           ? "queued"
                           : "idle"
                 }
+                progress={progress}
                 onClick={onDownload}
                 sizeLabel={sizeLabel}
                 doneLabel={doneLabel}
