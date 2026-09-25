@@ -13,7 +13,7 @@ const METHODS: { value: DownloadMethod; title: string; description: string }[] =
   {
     value: "stream",
     title: "Fastest",
-    description: "Streams straight through. A few sites can't be streamed.",
+    description: "Quickest route to a file that plays anywhere: streams when it can, otherwise a quick server merge.",
   },
   {
     value: "prepare",

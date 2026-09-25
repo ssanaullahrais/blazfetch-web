@@ -28,16 +28,20 @@ Default (`GET /stream`): the app navigates a hidden frame to the stream URL with
 download manager takes over and nothing is buffered in memory. The backend sets the cookie
 `blazfetch_dl_<token>` once bytes flow; the app polls for it to show "Started". If the frame instead shows a JSON
 error, the app reads it and shows the friendly message. Stop removes the frame, which ends the server's processes.
-The delivery mode comes from Settings (`auto`, `stream`, `prepare`). Audio previews use `fetch` and a blob.
+The delivery mode comes from Settings: Automatic (`auto`) and Fastest (`stream`) use this request; Compatible
+uses the job flow below. Audio previews use `fetch` and a blob.
 If the API is on another origin the frame cannot be observed, so the app falls back to plain navigation.
 
-Progress-bar method (`POST /download`):
+Compatible (`POST /download`, the job flow with a real progress bar):
 
-1. The user clicks Download on a format row. The frontend calls `POST /download` with `{ url, formatId, kind }`
-   (`formatId` is omitted for "Best quality", which the backend resolves).
-2. It polls `GET /jobs/:id` every second and shows the job's `progress` on the button ("Preparing…").
+1. The user clicks Download on a format row. The frontend calls `POST /download` with
+   `{ url, formatId, kind, filename }` (`formatId` is omitted for "Best quality", which the backend resolves;
+   `filename` is the same name the other methods use, without extension).
+2. It polls `GET /jobs/:id` every second and shows the job's `progress` on the button ("Preparing…"). The backend's
+   progress covers the whole job: the download up to 90%, then the conversion to H.264/AAC (when the source needs
+   one) up to 99%.
 3. When the job is `ready` or `completed`, it starts the browser download from `GET /downloads/:id`. The backend
-   sends `Content-Disposition: attachment`, so the page stays where it is.
+   sends `Content-Disposition: attachment` with the file's title, so the page stays where it is.
 4. Stop calls `DELETE /downloads/:id`.
 
 Job states are mapped in `toJobStatus()`:
@@ -50,15 +54,19 @@ Job states are mapped in `toJobStatus()`:
 | `failed` | error (shows `errorMessage`) |
 | `cancelled`, `expired` | cancelled |
 
-The job file is served once. The backend removes its temporary copy after it is sent, so a finished job cannot be
-downloaded a second time.
+The job file answers `Range` requests, so a download the browser lost halfway (common on phones) resumes. The backend
+removes its temporary copy once the last byte has been sent, so a finished job cannot be downloaded a second time.
 
 ## How responses are mapped to the UI
 
 `fetchInfo()` turns the backend response into a `MediaInfo`:
 
-- **Single video:** `formats[]` become video rows, highest resolution first, one row per resolution and container.
-  `audioFormats[]` become audio rows, best bitrate first. HLS manifest entries and DRC variants are dropped.
+- **Single video:** `formats[]` become video rows (`dedupeVideoFormats()`), highest resolution first, one row per
+  resolution and container. For each, an H.264 format wins, then the plain file over an HLS copy (YouTube lists
+  both at most qualities; the copy has no size), then one with a known size. `audioFormats[]` become audio rows,
+  best bitrate first. DRC variants are dropped.
+- **Row order:** the list shows the first 8 video and 5 audio rows. "Sort video by smallest size" and "Sort audio by
+  compatibility" only reorder those rows (`src/lib/format-order.ts`); they never swap in other formats.
 - **No audio track at the source:** the `/fetch/audio` result contains a synthetic `mp3-from-<formatId>` option,
   which the backend converts with ffmpeg.
 - **Playlist:** `playlist.items[]` become a list; opening an entry fetches that video.
