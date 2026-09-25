@@ -110,12 +110,12 @@ export function SettingsMenu() {
         <Toggle label="Fetch on paste" checked={prefs.fetchOnPaste} onChange={set("fetchOnPaste")} />
         <Toggle label="Sounds" checked={prefs.soundEnabled} onChange={set("soundEnabled")} />
         <Toggle
-          label="Sort audio by compatibility"
+          label="Audio: MP3 first"
           checked={prefs.sortAudioByCompatibility}
           onChange={set("sortAudioByCompatibility")}
         />
         <Toggle
-          label="Sort video by smallest size"
+          label="Video: smallest first"
           checked={prefs.sortVideoBySmallestSize}
           onChange={set("sortVideoBySmallestSize")}
         />
