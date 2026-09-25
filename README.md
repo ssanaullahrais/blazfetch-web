@@ -12,7 +12,7 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8)
-![Tests](https://img.shields.io/badge/tests-96%20passing-2EA44F)
+![Tests](https://img.shields.io/badge/tests-116%20passing-2EA44F)
 
 [Backend repository](https://github.com/ssanaullahrais/blazfetch-api) ·
 [Integration guide](docs/INTEGRATION.md) ·
@@ -183,7 +183,8 @@ The proxy target for `pnpm dev` and `pnpm preview` is in [vite.config.ts](vite.c
 src/
   components/
     home-page.tsx          search, result card, tabs, format rows, range picker
-    settings-menu.tsx      download method and preferences popover
+    settings-menu.tsx      download method and preferences: a popover on desktop, a bottom drawer on phones
+    install-app.tsx        floating "Install" card, the phone menu's Install app row, iPhone steps
     unavailable-card.tsx   "No longer available" card for removed media
     download/              download button and stop dialog
     platform-icons.tsx     platform logos (all 18) and the backend-driven grid
@@ -198,6 +199,9 @@ src/
     media-path.ts          stable page paths (/youtube/<id>)
     preferences.ts         local preferences
     pwa.ts                 PWA switch, update checks, clean-up when switched off
+    pwa-install.ts         keeps the browser's install prompt for the Install app card
+    busy.ts                whether a download is running (an automatic app update waits for it)
+    site-stats.ts          footer totals and the per-platform download counts in the icon tooltips
 docs/
   INTEGRATION.md           how the UI maps to each backend endpoint
   DEPLOYMENT.md            production build, Nginx, backend CORS
