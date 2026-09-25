@@ -17,7 +17,7 @@ export function reportDownloadError(
   const message = friendlyErrorFor(err);
   // A busy server is a short cool-down, not a failure: friendly wording, no red, no error sound.
   const coolDown = isCoolDown(err);
-  const title = coolDown ? "Cooling down" : `${actionLabel} failed`;
+  const title = coolDown ? "Hang tight" : `${actionLabel} failed`;
   toast.error(<ErrorToast title={title} message={message} calm={coolDown} />, toastId ? { id: toastId } : undefined);
   if (soundEnabled && !coolDown) playErrorSound();
 }

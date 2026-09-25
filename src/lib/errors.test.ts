@@ -70,7 +70,7 @@ describe("friendly messages", () => {
     ["GEO_RESTRICTED", /region/i],
     ["FORMAT_UNAVAILABLE", /copy-protected/i],
     ["PLATFORM_RATE_LIMITED", /limiting requests/i],
-    ["SERVER_BUSY", /few seconds/i],
+    ["SERVER_BUSY", /already downloading/i],
     ["PROCESS_TIMEOUT", /too long/i],
     ["FILE_TOO_LARGE", /too large/i],
   ])("maps %s to plain wording", (code, pattern) => {
@@ -92,7 +92,7 @@ describe("friendly messages", () => {
     expect(errorTitleFor(new ApiError("UNSUPPORTED_PLATFORM", ""))).toBe("Not supported")
     expect(errorTitleFor(new ApiError("MEDIA_UNAVAILABLE", ""))).toBe("Video not found")
     expect(errorTitleFor(new ApiError("PRIVATE_MEDIA", ""))).toBe("Can't download this")
-    expect(errorTitleFor(new ApiError("SERVER_BUSY", ""))).toBe("Cooling down")
+    expect(errorTitleFor(new ApiError("SERVER_BUSY", ""))).toBe("Hang tight")
   })
 })
 
@@ -128,7 +128,7 @@ describe("messages for the backend's own limits and short links", () => {
 
   it("still reports a real platform rate limit and a busy server as before", () => {
     expect(friendlyErrorFor(new ApiError("PLATFORM_RATE_LIMITED", "The source platform is rate-limiting requests.", 429))).toMatch(/limiting requests/);
-    expect(friendlyErrorFor(new ApiError("SERVER_BUSY", "You have reached your concurrent download limit.", 503))).toMatch(/few seconds/);
+    expect(friendlyErrorFor(new ApiError("SERVER_BUSY", "You have reached your concurrent download limit.", 503))).toMatch(/already downloading/);
   });
 
   it("explains a short link that could not be opened", () => {
