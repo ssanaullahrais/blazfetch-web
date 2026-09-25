@@ -24,6 +24,8 @@ import {
   Video,
   Search,
   PanelLeftIcon,
+  CirclePlay,
+  User,
   Download,
   Share2,
   Sun,
@@ -33,6 +35,7 @@ import {
 } from "lucide-react";
 import { PlatformIcons } from "@/components/platform-icons";
 import { ProgressiveList } from "@/components/progressive-list";
+import { instagramProfileUrl, instagramStoriesUrl, parseInstagramProfileLink } from "@/lib/instagram-links";
 import { setDownloadsBusy } from "@/lib/busy";
 import { FormatDetailsDialog } from "@/components/format-details-dialog";
 import { DownloadProgressButton } from "@/components/download/download-progress-button";
@@ -87,6 +90,9 @@ import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-p
 import { coerceMediaUrl } from "@/lib/media-url";
 
 type FormatKey = string;
+
+/** One shared empty list: a fresh `[]` on every render would look like a new list to ProgressiveList each time. */
+const NO_ITEMS: never[] = [];
 
 /** The progress-bar method is job-based; a quick preview always uses the streaming endpoint. */
 /** Turn the audio play buttons back on by setting VITE_ENABLE_AUDIO_PREVIEW=true. */
@@ -258,7 +264,10 @@ export function HomePage() {
   const [unavailable, setUnavailable] = useState<Tombstone | null>(null);
   const [progress, setProgress] = useState<Record<FormatKey, number>>({});
   const [downloadStatus, setDownloadStatus] = useState<Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">>({});
-  const [activeTab, setActiveTab] = useState<"video" | "audio" | "images">(prefs.defaultMode);
+  const [activeTab, setActiveTab] = useState<"video" | "audio" | "images" | "stories">(prefs.defaultMode);
+  // An Instagram profile also looks up its stories in the background: they get their own tab once found.
+  const [stories, setStories] = useState<{ username: string; status: "loading" | "ready"; info?: MediaInfo } | null>(null);
+  const storiesSeq = useRef(0);
   const [previewLoading, setPreviewLoading] = useState<Record<FormatKey, boolean>>({});
   const [previewProgress, setPreviewProgress] = useState<Record<FormatKey, number>>({});
   // The only remaining confirm dialog is "stop the format you just clicked
@@ -331,6 +340,8 @@ export function HomePage() {
     previewControllers.clear();
     previewRequestSeq.clear();
     pendingFetches.clear();
+    storiesSeq.current += 1; // a stories lookup still running belongs to the previous link
+    setStories(null);
     // The previewed audio only lives in this page's memory: stop it and free it when a new link is loaded.
     stopPlayback();
     for (const { blobUrl } of blobCache.values()) URL.revokeObjectURL(blobUrl);
@@ -363,14 +374,35 @@ export function HomePage() {
   }
 
   /** Puts a loaded result on screen and points the address bar at its stable page path. */
+  /** Looks up an Instagram account's stories in the background; the Stories tab appears only when there are some. */
+  async function loadStories(username: string) {
+    const seq = ++storiesSeq.current;
+    setStories({ username, status: "loading" });
+    try {
+      const data = await fetchInfo(instagramStoriesUrl(username));
+      if (seq !== storiesSeq.current) return;
+      const found = (data.carouselVideos?.length ?? 0) + (data.images?.length ?? 0) > 0;
+      setStories(found ? { username, status: "ready", info: data } : null);
+    } catch {
+      // No live stories (or a private account): the profile stays as it is, without a Stories tab.
+      if (seq === storiesSeq.current) setStories(null);
+    }
+  }
+
   function showResult(data: MediaInfo, sourceUrl: string, opts: { keepAddress?: boolean } = {}) {
     setUnavailable(null);
     setInfo(data);
     setFetchedUrl(sourceUrl);
+    const profile = parseInstagramProfileLink(sourceUrl);
+    if (profile?.kind === "profile" && data.type === "carousel") void loadStories(profile.username);
     // The box empties once the result shows; Refresh and Share use the remembered link, and a failed fetch keeps it for retry.
     setUrl("");
     if (data.type === "images") setActiveTab("images");
-    else if (data.type === "carousel") setActiveTab(data.carouselVideos?.length ? "video" : "images");
+    else if (data.type === "carousel") {
+      // A profile opens on its photos (Gallery first); any other post or carousel opens on its videos.
+      const photosFirst = profile?.kind === "profile" && (data.images?.length ?? 0) > 0;
+      setActiveTab(photosFirst || !data.carouselVideos?.length ? "images" : "video");
+    }
     else if (data.audioOnly) setActiveTab("audio");
     // Any other result: pick a tab that has content, never keep the previous result's tab (it could be empty).
     else setActiveTab(prefs.defaultMode === "audio" && data.audioFormats.length ? "audio" : "video");
@@ -776,7 +808,7 @@ export function HomePage() {
 
   // Carousel/board videos: the item's own formatId belongs to this post, so the server prepares it
   // from the post link (mode=prepare).
-  async function runCarouselVideoDownload(formatId: string, key: FormatKey) {
+  async function runCarouselVideoDownload(formatId: string, key: FormatKey, sourceUrl: string = fetchedUrl, title: string = info?.title ?? "video") {
     downloadControllers.get(key)?.abort();
     const controller = new AbortController();
     downloadControllers.set(key, controller);
@@ -794,7 +826,7 @@ export function HomePage() {
       const stopSimulating = simulateProgress(key);
       try {
         await startBrowserDownload(
-          { url: fetchedUrl, kind: "video", formatId, filename: sanitizeFilenameLocal(info?.title ?? "video"), mode: "prepare" },
+          { url: sourceUrl, kind: "video", formatId, filename: sanitizeFilenameLocal(title), mode: "prepare" },
           { signal: controller.signal }
         );
       } finally {
@@ -1214,6 +1246,23 @@ export function HomePage() {
                   <RefreshCw className="size-3" />
                   Refresh
                 </Button>
+                {(() => {
+                  // A stories result offers the way back to the profile (a profile shows its stories in its own tab).
+                  const link = parseInstagramProfileLink(fetchedUrl);
+                  if (!link || link.kind !== "stories") return null;
+                  return (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-fit gap-1 px-2 text-xs text-muted-foreground"
+                      disabled={loading}
+                      onClick={() => void handleSearch(instagramProfileUrl(link.username))}
+                    >
+                      <User className="size-3" />
+                      Profile
+                    </Button>
+                  );
+                })()}
                 {info.stored?.playlistPath && (
                   <Button
                     variant="ghost"
@@ -1276,7 +1325,7 @@ export function HomePage() {
 
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as "video" | "audio" | "images")}
+            onValueChange={(v) => setActiveTab(v as "video" | "audio" | "images" | "stories")}
             className="-mt-2 px-4 pb-4"
           >
             {info.type === "images" ? (
@@ -1288,17 +1337,28 @@ export function HomePage() {
               </TabsList>
             ) : info.type === "carousel" ? (
               <TabsList className="w-full">
-                {(info.carouselVideos?.length ?? 0) > 0 && (
-                  <TabsTrigger value="video" className="flex-1 gap-1.5">
-                    <Video className="size-3.5" /> Videos
-                  </TabsTrigger>
-                )}
-                {(info.images?.length ?? 0) > 0 && (
-                  <TabsTrigger value="images" className="flex-1 gap-1.5">
-                    <ImageIcon className="size-3.5" />
-                    {(info.images?.length ?? 0) > 1 ? "Gallery" : "Picture"}
-                  </TabsTrigger>
-                )}
+                {(() => {
+                  const videosTrigger = (info.carouselVideos?.length ?? 0) > 0 && (
+                    <TabsTrigger key="video" value="video" className="flex-1 gap-1.5">
+                      <Video className="size-3.5" /> Videos
+                    </TabsTrigger>
+                  );
+                  const galleryTrigger = (info.images?.length ?? 0) > 0 && (
+                    <TabsTrigger key="images" value="images" className="flex-1 gap-1.5">
+                      <ImageIcon className="size-3.5" />
+                      {(info.images?.length ?? 0) > 1 ? "Gallery" : "Picture"}
+                    </TabsTrigger>
+                  );
+                  const storiesTrigger = stories && (
+                    <TabsTrigger key="stories" value="stories" className="flex-1 gap-1.5">
+                      {stories.status === "loading" ? <Loader2 className="size-3.5 animate-spin" /> : <CirclePlay className="size-3.5" />}
+                      Stories
+                    </TabsTrigger>
+                  );
+                  // A profile lists Gallery, Videos, Stories; any other post or carousel keeps Videos first.
+                  const isProfile = parseInstagramProfileLink(fetchedUrl)?.kind === "profile";
+                  return isProfile ? [galleryTrigger, videosTrigger, storiesTrigger] : [videosTrigger, galleryTrigger, storiesTrigger];
+                })()}
               </TabsList>
             ) : (
               !info.audioOnly && (
@@ -1352,6 +1412,38 @@ export function HomePage() {
                       progress={progress}
                       runImageDownload={runImageDownload}
                     />
+                  </TabsContent>
+                )}
+                {stories && (
+                  <TabsContent value="stories" className="flex flex-col gap-2 pt-3">
+                    {stories.status === "loading" || !stories.info ? (
+                      <p className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+                        <Loader2 className="size-3.5 animate-spin" /> Looking for stories…
+                      </p>
+                    ) : (
+                      <>
+                        {(stories.info.carouselVideos?.length ?? 0) > 0 && (
+                        <CarouselVideoList
+                          info={stories.info}
+                          keyPrefix="story-"
+                          downloadStatus={downloadStatus}
+                          progress={progress}
+                          runCarouselVideoDownload={(formatId, key) =>
+                            runCarouselVideoDownload(formatId, key, instagramStoriesUrl(stories.username), stories.info?.title)
+                          }
+                        />
+                        )}
+                        {(stories.info.images?.length ?? 0) > 0 && (
+                        <ImageFormatList
+                          info={stories.info}
+                          keyPrefix="story-"
+                          downloadStatus={downloadStatus}
+                          progress={progress}
+                          runImageDownload={runImageDownload}
+                        />
+                        )}
+                      </>
+                    )}
                   </TabsContent>
                 )}
               </>
@@ -1559,19 +1651,21 @@ function CarouselVideoList({
   downloadStatus,
   progress,
   runCarouselVideoDownload,
+  keyPrefix = "",
 }: {
+  keyPrefix?: string;
   info: MediaInfo;
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
   /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
   progress: Record<FormatKey, number>;
   runCarouselVideoDownload: (formatId: string, key: FormatKey) => void;
 }) {
-  const videos = info.carouselVideos ?? [];
+  const videos = info.carouselVideos ?? NO_ITEMS;
 
   return (
     <ProgressiveList items={videos}>
       {(visibleVideos) => visibleVideos.map((video, index) => {
-        const key = keyFor("video", `carousel-${video.id}`);
+        const key = keyFor("video", `${keyPrefix}carousel-${video.id}`);
         const title = `${sanitizeFilenameLocal(info.title)}-${index + 1}`;
         return (
           <FormatRow
@@ -1603,19 +1697,21 @@ function ImageFormatList({
   downloadStatus,
   progress,
   runImageDownload,
+  keyPrefix = "",
 }: {
+  keyPrefix?: string;
   info: MediaInfo;
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
   /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
   progress: Record<FormatKey, number>;
   runImageDownload: (imageUrl: string, key: FormatKey, title: string) => void;
 }) {
-  const images = info.images ?? [];
+  const images = info.images ?? NO_ITEMS;
 
   return (
     <ProgressiveList items={images}>
       {(visibleImages) => visibleImages.map((image, index) => {
-        const key = keyFor("video", `img-${index}`);
+        const key = keyFor("video", `${keyPrefix}img-${index}`);
         const title = `${sanitizeFilenameLocal(info.title)}-${index + 1}`;
         return (
           <FormatRow
