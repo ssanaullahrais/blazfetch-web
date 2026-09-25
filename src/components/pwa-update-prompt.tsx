@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { RefreshCw, X } from "lucide-react";
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { Button } from "@/components/ui/button";
+import { isDownloadsBusy } from "@/lib/busy";
 import { watchForUpdates } from "@/lib/pwa";
 
 /**
- * Registers the service worker and, once a new version has taken over, offers a reload. The page is never reloaded
- * by itself, so a download in progress is not cut off; "Later" keeps this page as it is, and any reload shows the
- * new version.
+ * Registers the service worker and, once a new version has taken over, applies it by itself: as soon as the visitor
+ * leaves the page (switches tab or app, locks the phone) and no download is running, it reloads quietly, so an open
+ * or installed app is always current the next time it is looked at. While the page is in view it only offers a
+ * reload, never forcing one, so a typed link or a download in progress is not cut off; "Later" keeps this page as it
+ * is, and any reload shows the new version.
  */
 export function PwaUpdatePrompt() {
   const stopWatching = useRef<(() => void) | null>(null);
@@ -28,13 +31,24 @@ export function PwaUpdatePrompt() {
 
   useEffect(() => () => stopWatching.current?.(), []);
 
-  if (!needRefresh && !updated) return null;
-
   const reload = () => {
     setReloading(true);
     if (updated) window.location.reload();
     else void updateServiceWorker(true); // a worker still waiting: activate it, then the page reloads
   };
+
+  const updatePending = needRefresh || updated;
+  useEffect(() => {
+    if (!updatePending) return;
+    const applyWhenAway = () => {
+      if (document.visibilityState === "hidden" && !isDownloadsBusy()) reload();
+    };
+    document.addEventListener("visibilitychange", applyWhenAway);
+    return () => document.removeEventListener("visibilitychange", applyWhenAway);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only reads current state and the service worker
+  }, [updatePending]);
+
+  if (!needRefresh && !updated) return null;
 
   return (
     <div
