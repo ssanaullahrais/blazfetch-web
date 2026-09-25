@@ -1011,12 +1011,15 @@ export function HomePage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <ServiceStatus />
-            <SettingsMenu />
             <div className="hidden lg:block">
-              <ShareMenu
-                shareableUrl={shareUrl}
-              />
+              <ServiceStatus />
+            </div>
+            <SettingsMenu />
+            <div className="lg:hidden">
+              <ShareMenu shareableUrl={shareUrl} />
+            </div>
+            <div className="hidden lg:block">
+              <ShareMenu shareableUrl={shareUrl} />
             </div>
             <ThemeToggle />
           </div>

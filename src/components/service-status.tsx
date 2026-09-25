@@ -10,6 +10,7 @@ const REFRESH_MS = 60_000;
  * yt-dlp and ffmpeg are all up. */
 export function ServiceStatus() {
   const [health, setHealth] = useState<BackendHealth | null>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -29,9 +30,15 @@ export function ServiceStatus() {
   const detail = health.ready ? "Healthy" : "Service unavailable";
 
   return (
-    <Tooltip>
+    <Tooltip open={open} onOpenChange={setOpen}>
       <TooltipTrigger asChild>
-        <Button variant="outline" size="icon" aria-label={detail} className="relative">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={detail}
+          className="relative"
+          onClick={() => setOpen((prev) => !prev)}
+        >
           <Activity className="size-4" />
           <span
             className={`absolute -right-0.5 -top-0.5 size-2.5 rounded-full ring-2 ring-background ${

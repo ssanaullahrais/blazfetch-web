@@ -235,3 +235,49 @@ describe("fallbackTitle", () => {
     expect(info.title).toMatch(/^Pinterest Images/);
   });
 });
+
+describe("dedupeVideoFormats", () => {
+  const fmt = (over: Record<string, unknown>) => ({ formatId: "f", ext: "mp4", kind: "video" as const, ...over }) as never;
+
+  it("picks the real Instagram case: an unrated 'original' link several times the size of the only rated one", () => {
+    // https://www.instagram.com/p/DPLoAsuiKR6/?hl=en — yt-dlp itself reports no height/width at all for
+    // Instagram's progressive "original" link (confirmed against the live post), only a rated 480p DASH
+    // one; the API's own probe still gets a real file size for both.
+    const rated480p = fmt({ formatId: "480p", height: 480, width: 914, filesizeBytes: 2_600_000 });
+    const unratedOriginal = fmt({ formatId: "orig", height: null, filesizeBytes: 17_300_000 });
+    expect(dedupeVideoFormats([rated480p, unratedOriginal])[0].format_id).toBe("orig");
+  });
+
+  it("still trusts a real, known height over a smaller unrated one", () => {
+    const rated720p = fmt({ formatId: "720p", height: 720, filesizeBytes: 10_000_000 });
+    const unratedSmall = fmt({ formatId: "mystery", height: null, filesizeBytes: 5_000_000 });
+    expect(dedupeVideoFormats([rated720p, unratedSmall])[0].format_id).toBe("720p");
+  });
+
+  it("does not let a barely-bigger unrated file override a known height (needs a clear size advantage)", () => {
+    const rated480p = fmt({ formatId: "480p", height: 480, filesizeBytes: 10_000_000 });
+    const unratedSlightlyBigger = fmt({ formatId: "mystery", height: null, filesizeBytes: 11_000_000 });
+    expect(dedupeVideoFormats([rated480p, unratedSlightlyBigger])[0].format_id).toBe("480p");
+  });
+
+  it("falls back to file size, then keeps a stable order, when neither side reports a height", () => {
+    // Different containers so the two rows aren't deduped into one "Original" row.
+    const bigger = fmt({ formatId: "a", ext: "mp4", height: null, filesizeBytes: 9_000_000 });
+    const smaller = fmt({ formatId: "b", ext: "webm", height: null, filesizeBytes: 1_000_000 });
+    expect(dedupeVideoFormats([smaller, bigger]).map((f) => f.format_id)).toEqual(["a", "b"]);
+  });
+
+  it("still prefers a compatible container and higher fps at the same known height", () => {
+    const webm = fmt({ formatId: "webm-1080", height: 1080, ext: "webm", compatible: false, fps: 60 });
+    const mp4 = fmt({ formatId: "mp4-1080", height: 1080, ext: "mp4", compatible: true, fps: 30 });
+    expect(dedupeVideoFormats([webm, mp4])[0].format_id).toBe("mp4-1080");
+  });
+
+  it("keeps one row per resolution+container, the highest-ranked one", () => {
+    const low = fmt({ formatId: "dup-low", height: 480, filesizeBytes: 1 });
+    const high = fmt({ formatId: "dup-high", height: 480, filesizeBytes: 2 });
+    const out = dedupeVideoFormats([low, high]);
+    expect(out).toHaveLength(1);
+    expect(out[0].format_id).toBe("dup-high");
+  });
+});
