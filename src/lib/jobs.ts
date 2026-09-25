@@ -45,7 +45,14 @@ function toJobStatus(job: ApiJob): DownloadJobStatus {
 }
 
 /** Starts a background job. `formatId` defaults to "best" on the backend. */
-export async function startDownloadJob(params: { url: string; formatId?: string; kind: "video" | "audio"; quality?: string }) {
+export async function startDownloadJob(params: {
+  url: string;
+  formatId?: string;
+  kind: "video" | "audio";
+  quality?: string;
+  /** Name for the saved file, without extension; the server adds the right one. */
+  filename?: string;
+}) {
   const data = await request<{ job: ApiJob }>("/download", {
     method: "POST",
     body: JSON.stringify({
@@ -53,6 +60,7 @@ export async function startDownloadJob(params: { url: string; formatId?: string;
       formatId: params.formatId,
       kind: params.kind,
       quality: params.quality,
+      filename: params.filename?.slice(0, 200),
     }),
   });
   return toJobStatus(data.job);

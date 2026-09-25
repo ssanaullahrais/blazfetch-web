@@ -239,18 +239,30 @@ export type MediaInfo = {
 
 export type FetchOptions = { forceRefresh?: boolean; rangeStart?: number; rangeEnd?: number };
 
-function toVideoFormat(f: ApiFormat): MediaFormat {
+/** Name for a format the source lists without a resolution: its "HD"/"SD" id or quality, else "Original". */
+function unsizedLabel(f: ApiFormat): string {
+  const named = [f.quality, f.formatId].find((v) => v && /^(hd|sd|uhd|fhd)$/i.test(v));
+  return named ? named.toUpperCase() : "Original";
+}
+
+/** Size from the bitrate (kbit/s) and duration when the source gives no size (HLS, DASH, most social sites). */
+function estimatedSize(f: ApiFormat, durationSeconds: number | null | undefined): number | null {
+  return f.bitrate && durationSeconds ? Math.round((f.bitrate * 1000 * durationSeconds) / 8) : null;
+}
+
+function toVideoFormat(f: ApiFormat, durationSeconds?: number | null): MediaFormat {
+  const estimate = f.filesizeBytes == null ? estimatedSize(f, durationSeconds) : null;
   return {
     format_id: f.formatId,
     ext: f.ext,
-    resolution: f.height ? `${f.height}p` : (f.quality ?? null),
+    resolution: f.height ? `${f.height}p` : unsizedLabel(f),
     height: f.height ?? null,
     fps: f.fps ?? null,
     hasVideo: true,
     hasAudio: f.kind === "video",
     note: f.compatible === false ? "may not play everywhere" : null,
-    filesize: f.filesizeBytes ?? null,
-    filesizeApprox: !!f.filesizeApprox,
+    filesize: f.filesizeBytes ?? estimate,
+    filesizeApprox: estimate != null || !!f.filesizeApprox,
     abr: null,
     tbr: f.bitrate ?? null,
     vcodec: f.codec ?? null,
@@ -287,6 +299,13 @@ function toAudioFormat(f: ApiAudioFormat): MediaFormat {
  */
 const UNKNOWN_HEIGHT_SIZE_ADVANTAGE = 2;
 
+/** An HLS/DASH playlist rather than the file itself. YouTube lists one next to the plain file at most qualities
+ * (no size, downloads in fragments, slower), so the plain file is the one worth showing. */
+function isManifestFormat(f: ApiFormat): boolean {
+  const url = f.url ?? "";
+  return /\.(m3u8|mpd)(\?|$)/i.test(url) || /\/(hls_playlist|dash_manifest|manifest\/dash)\//i.test(url) || /^hls/i.test(f.formatId);
+}
+
 function compareByQuality(a: ApiFormat, b: ApiFormat): number {
   const heightDiff = (b.height ?? 0) - (a.height ?? 0);
   if (heightDiff !== 0) {
@@ -294,19 +313,27 @@ function compareByQuality(a: ApiFormat, b: ApiFormat): number {
     if (b.height == null && (b.filesizeBytes ?? 0) > (a.filesizeBytes ?? 0) * UNKNOWN_HEIGHT_SIZE_ADVANTAGE) return 1;
     return heightDiff;
   }
-  return Number(b.compatible) - Number(a.compatible) || (b.fps ?? 0) - (a.fps ?? 0) || (b.filesizeBytes ?? 0) - (a.filesizeBytes ?? 0);
+  return (
+    Number(b.compatible) - Number(a.compatible) ||
+    (b.fps ?? 0) - (a.fps ?? 0) ||
+    Number(isManifestFormat(a)) - Number(isManifestFormat(b)) ||
+    Number(b.filesizeBytes != null) - Number(a.filesizeBytes != null) ||
+    (b.filesizeBytes ?? 0) - (a.filesizeBytes ?? 0)
+  );
 }
 
-/** Highest resolution first; one row per resolution+container, preferring browser-compatible ones. */
-export function dedupeVideoFormats(formats: ApiFormat[]): MediaFormat[] {
+/** Highest resolution first; one row per resolution+container, preferring browser-compatible ones, then the plain
+ * file over a playlist copy, then one whose size is known. Formats listed without a resolution share one row per
+ * label (Instagram lists the same 720p file three times as "1", "2" and "3"). */
+export function dedupeVideoFormats(formats: ApiFormat[], durationSeconds?: number | null): MediaFormat[] {
   const sorted = [...formats].sort(compareByQuality);
   const seen = new Set<string>();
   const out: MediaFormat[] = [];
   for (const f of sorted) {
-    const key = `${f.height ?? f.quality ?? f.formatId}:${f.ext}`;
+    const key = `${f.height ?? unsizedLabel(f)}:${f.ext}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(toVideoFormat(f));
+    out.push(toVideoFormat(f, durationSeconds));
   }
   return out;
 }
@@ -425,7 +452,7 @@ function toMediaInfoRaw(data: ApiFetchResponse): MediaInfo {
     return { ...base, type: "images", images: src ? [{ url: src, thumbnail: data.thumbnail ?? src, filesize: null }] : [] };
   }
 
-  const videoFormats = dedupeVideoFormats(data.formats);
+  const videoFormats = dedupeVideoFormats(data.formats, data.durationSeconds);
   const rawAudio = data.audioFormats ?? [];
   // Drop HLS/manifest entries (no bitrate) and DRC variants, best bitrate first;
   // keep converted (MP3-from-video) options as they are.

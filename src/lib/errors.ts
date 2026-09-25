@@ -125,9 +125,20 @@ function isOwnRateLimit(err: ApiError): boolean {
 
 const OWN_RATE_LIMIT = "You're sending requests too quickly. Please wait a minute and try again.";
 const SHORT_LINK_FAILED = "This short link couldn't be opened. Paste the full link to the post instead.";
+const OFFLINE = "You're offline. Reconnect to the internet and try again.";
+
+/** True only when the browser knows it has no connection (the installed app still opens then). */
+function isOffline(): boolean {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
 
 /** The message to show a person for any error: by backend code when there is one, otherwise by wording. */
 export function friendlyErrorFor(err: unknown): string {
+  const message = messageFor(err);
+  return message === MESSAGES.NETWORK_ERROR && isOffline() ? OFFLINE : message;
+}
+
+function messageFor(err: unknown): string {
   if (err instanceof ApiError && isOwnRateLimit(err)) return OWN_RATE_LIMIT;
   if (err instanceof ApiError && err.code === "INVALID_URL" && /short link/i.test(err.message)) return SHORT_LINK_FAILED;
   if (err instanceof ApiError && MESSAGES[err.code]) return MESSAGES[err.code];
@@ -143,5 +154,6 @@ export function errorTitleFor(err: unknown): string {
     if (err.code === "MEDIA_NOT_FOUND" || err.code === "MEDIA_UNAVAILABLE") return "Video not found";
     if (err.code === "PRIVATE_MEDIA" || err.code === "LOGIN_REQUIRED" || err.code === "AGE_RESTRICTED") return "Can't download this";
   }
+  if (isOffline()) return "No connection";
   return "Try again later";
 }

@@ -68,6 +68,7 @@ import { fetchStreamBlob, saveBlobToDisk, startBrowserDownload } from "@/lib/str
 import { cancelDownloadJob, startDownloadJob } from "@/lib/jobs";
 import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
+import { audioRows, bestAudioFormat, videoRows } from "@/lib/format-order";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { bumpDownloadCount } from "@/lib/site-stats";
 import { SettingsMenu } from "@/components/settings-menu";
@@ -98,9 +99,10 @@ function keyFor(mode: "video" | "audio", format_id?: string) {
 // yt-dlp can't report an exact size for DASH/fragmented formats up front, so
 // the server estimates one from bitrate * duration — shown the same as an
 // exact size (the "Format details" dialog still notes when it's estimated).
-function sizeLabelFor(filesize: number | null) {
+/** "12.3 MB", or "~12.3 MB" for an estimate (from the bitrate, or the source's own guess). */
+function sizeLabelFor(filesize: number | null, approx = false) {
   const size = formatBytes(filesize);
-  return size ?? undefined;
+  return size ? `${approx ? "~" : ""}${size}` : undefined;
 }
 
 type BrandState = "idle" | "fetching" | "downloading";
@@ -660,7 +662,15 @@ export function HomePage() {
       if (deliveryMode === "prepare") {
         // Compatible: the server always builds the file first, so real, server-reported percent is
         // available for the whole "preparing" wait — use it instead of pacing a guess.
-        await downloadWithProgress(mode, key, urlOverride ?? fetchedUrl, format_id, controller.signal, isCurrent);
+        await downloadWithProgress(
+          mode,
+          key,
+          urlOverride ?? fetchedUrl,
+          format_id,
+          buildName(mode, media, formatMeta),
+          controller.signal,
+          isCurrent
+        );
       } else {
         // Automatic/Fastest: one request straight to the browser's download manager. It resolves when
         // bytes start flowing (or rejects with the server's own error), so "Preparing" ends exactly when
@@ -731,6 +741,7 @@ export function HomePage() {
     key: FormatKey,
     sourceUrl: string,
     format_id: string | undefined,
+    filename: string,
     signal: AbortSignal,
     isCurrent: () => boolean
   ) {
@@ -738,6 +749,7 @@ export function HomePage() {
       url: sourceUrl,
       formatId: format_id,
       kind: mode,
+      filename,
       quality: !format_id && mode === "video" ? prefs.preferredQuality : undefined,
     });
     if (!isCurrent()) return;
@@ -901,11 +913,9 @@ export function HomePage() {
   const shareUrl = fetchedUrl && info ? shareUrlForPath(window.location.origin, info.stored?.path, fetchedUrl) : null;
 
   return (
-    // Native scroll (not the Radix ScrollArea this replaced), restyled via the .scrollbar-thin
-    // utility in index.css to keep the same look. Native scrolling on this one container is what
-    // lets overscroll-y-contain reliably reach the actual scrolling element on iOS, instead of a
-    // synthetic nested viewport whose own boundary the browser's touch-scroll physics don't see.
-    <div className="scrollbar-thin h-svh w-full min-w-0 overflow-y-auto overscroll-y-contain">
+    // The page itself scrolls, like any website: no fixed-height scroll box, whose height (svh) is shorter than
+    // the screen once iOS Safari's toolbar collapses, which cut the list off above an empty band.
+    <div className="w-full min-w-0">
     <PullToRefresh onRefresh={goHome} />
     <div
       className={[
@@ -1590,23 +1600,7 @@ function sanitizeFilenameLocal(name: string) {
   return cleaned.slice(0, 100).trim() || "download";
 }
 
-/** Smallest file size first — an unknown size (yt-dlp can't always report one up front for DASH/fragmented
- * formats) sorts last either way, since there's nothing to rank it against. See Preferences > "Sort video by
- * smallest file size" in settings-menu.tsx. */
-function sortVideoBySize(formats: MediaFormat[]): MediaFormat[] {
-  return [...formats].sort((a, b) => {
-    if (a.filesize == null && b.filesize == null) return 0;
-    if (a.filesize == null) return 1;
-    if (b.filesize == null) return -1;
-    return a.filesize - b.filesize;
-  });
-}
-
 const LARGE_FILE_BYTES = 200 * 1024 * 1024;
-
-/** True when a format is large enough to warrant the "this will take a while" heads-up. yt-dlp doesn't
- * always report an exact size up front — when it hasn't, fall back to the same quality tier its own badge
- * already shows: "top" (2K/4K) is large enough in practice either way. */
 function isLikelyLargeFile(format: MediaFormat): boolean {
   if (format.filesize != null) return format.filesize >= LARGE_FILE_BYTES;
   return videoQualityBadge(format.height).tier === "top";
@@ -1614,7 +1608,7 @@ function isLikelyLargeFile(format: MediaFormat): boolean {
 
 function warnIfLargeFile(format: MediaFormat): void {
   if (!isLikelyLargeFile(format)) return;
-  const size = sizeLabelFor(format.filesize);
+  const size = sizeLabelFor(format.filesize, format.filesizeApprox);
   toast(`Large file${size ? ` (${size})` : ""} — this may take a while to prepare. Please be patient.`, {
     icon: "⏳",
     duration: 6000,
@@ -1660,8 +1654,7 @@ function VideoFormatList({
   const bestFormatId = info.videoFormats[0]?.format_id;
   // bestOnly (auto-download-best) always means the true best quality pick, whatever the display sort below
   // would otherwise put first — the two preferences are about different things and shouldn't fight.
-  const listedFormats =
-    prefs.sortVideoBySmallestSize && !bestOnly ? sortVideoBySize(info.videoFormats) : info.videoFormats;
+  const listedFormats = videoRows(info.videoFormats, { bySize: prefs.sortVideoBySmallestSize, bestOnly });
 
   return (
     <>
@@ -1677,10 +1670,11 @@ function VideoFormatList({
           }
         />
       )}
-      {listedFormats.slice(0, bestOnly ? 1 : 8).map((f) => {
-        const resLabel = f.resolution ?? f.note ?? f.ext;
+      {listedFormats.map((f) => {
+        // The row names the quality only; codec notes live in the details dialog, not on the card.
+        const resLabel = f.resolution ?? "Original";
         const key = keyFor("video", f.format_id);
-        const sizeLabel = sizeLabelFor(f.filesize);
+        const sizeLabel = sizeLabelFor(f.filesize, f.filesizeApprox);
         return (
         <FormatRow
           key={f.format_id}
@@ -1710,18 +1704,6 @@ function VideoFormatList({
       })}
     </>
   );
-}
-
-const AUDIO_COMPATIBILITY_RANK: Record<string, number> = { mp3: 0, webm: 1 };
-
-/** MP3 first, then WEBM, then everything else, each tier still highest-bitrate-first — the source's own
- * quality-first order doesn't always put the most broadly playable format at the top. See Preferences >
- * "Sort audio by compatibility" in settings-menu.tsx. */
-function sortAudioByCompatibility(formats: MediaFormat[]): MediaFormat[] {
-  return [...formats].sort((a, b) => {
-    const rankDiff = (AUDIO_COMPATIBILITY_RANK[a.ext.toLowerCase()] ?? 2) - (AUDIO_COMPATIBILITY_RANK[b.ext.toLowerCase()] ?? 2);
-    return rankDiff !== 0 ? rankDiff : (b.abr ?? 0) - (a.abr ?? 0);
-  });
 }
 
 function AudioFormatList({
@@ -1765,10 +1747,10 @@ function AudioFormatList({
       extractor: info.extractor,
       videoId: info.id,
     })}.${ext || "m4a"}`;
-  // The extension hint for "Best quality audio" always matches the server's own best pick (highest
-  // bitrate), regardless of the compatibility sort below — that toggle only reorders the list underneath.
-  const bestExt = info.audioFormats[0]?.ext;
-  const listedFormats = prefs.sortAudioByCompatibility ? sortAudioByCompatibility(info.audioFormats) : info.audioFormats;
+  // The extension hint for "Best quality audio" matches the server's own best pick (see bestAudioFormat),
+  // regardless of the compatibility sort below — that toggle only reorders the list underneath.
+  const bestExt = bestAudioFormat(info.audioFormats)?.ext;
+  const listedFormats = audioRows(info.audioFormats, { byCompatibility: prefs.sortAudioByCompatibility });
 
   return (
     <>
@@ -1787,9 +1769,9 @@ function AudioFormatList({
         previewLoading={previewLoading[keyFor("audio")]}
         previewProgress={previewProgress[keyFor("audio")]}
       />
-      {!bestOnly && listedFormats.slice(0, 5).map((f) => {
+      {!bestOnly && listedFormats.map((f) => {
         const key = keyFor("audio", f.format_id);
-        const sizeLabel = sizeLabelFor(f.filesize);
+        const sizeLabel = sizeLabelFor(f.filesize, f.filesizeApprox);
         return (
         <FormatRow
           key={f.format_id}

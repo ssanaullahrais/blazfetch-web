@@ -12,7 +12,7 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8)
-![Tests](https://img.shields.io/badge/tests-58%20passing-2EA44F)
+![Tests](https://img.shields.io/badge/tests-96%20passing-2EA44F)
 
 [Backend repository](https://github.com/ssanaullahrais/blazfetch-api) ·
 [Integration guide](docs/INTEGRATION.md) ·
@@ -124,6 +124,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Footer counter | The footer receives committed fetch and download totals live from `GET /api/v1/stats/events`. If the event connection fails, it polls `/stats` every two seconds while visible. Downloads count after the API finishes sending the file; queued or prepared jobs do not count yet. Hidden until valid totals are available |
 | Pull to refresh | On phones, pull down from the top to show a circular loader; releasing reloads the app on the home screen with an empty link box |
 | Settings | Default tab (video or audio), fetch on paste, sounds |
+| Installable app (PWA) | On by default. Visitors can install it to the home screen or desktop, it opens instantly and offline, and a "New version is available · Reload" card appears after a deploy (it never reloads by itself, so a download is not cut off). API calls always go to the network. Turn it off with `VITE_ENABLE_PWA=false` |
 
 ### Download methods
 
@@ -131,10 +132,9 @@ Automatic is always used for now. The other methods are built in and shown as "S
 
 | Method | What it does |
 |---|---|
-| **Automatic** (active) | Streams instantly, and prepares on the server if streaming isn't possible |
-| Fastest | Direct stream only |
-| Compatible MP4 | Prepared on the server as H.264/AAC so it plays anywhere |
-| With progress bar | Server prepares the file first and reports real progress |
+| **Automatic** (active) | Streams straight away when the format already plays on phones (H.264 MP4); otherwise the server prepares a compatible MP4 in the same request |
+| Fastest | The quickest route to a file that plays everywhere: streams straight away when the format is ready to play, otherwise the server merges it into a normal MP4 in seconds (converting with its quickest settings only when there is no H.264 version) |
+| Compatible | The server builds an H.264/AAC MP4 first, with a real progress bar (download, then conversion), then hands it to the browser. An interrupted download can be resumed |
 
 To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
 
@@ -145,7 +145,8 @@ To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
 | `VITE_SITE_NAME`, `VITE_SITE_TAGLINE`, `VITE_SITE_DESCRIPTION`, `VITE_SITE_URL`, ... | BlazFetch, ... | White label and SEO: name, tagline, description, public URL and more. See [docs/BRANDING.md](docs/BRANDING.md) |
 | `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
 | `VITE_ENABLE_AUDIO_PREVIEW` | off | `true` shows the play button on audio rows (previews are off because most audio is M4A/WebM) |
-| `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks Fastest, Compatible MP4 and With progress bar in Settings |
+| `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks Fastest and Compatible in Settings |
+| `VITE_ENABLE_PWA` | on | `false` builds a plain website: no install prompt, no offline copy. Visitors who installed an earlier build are cleaned up on their next visit. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#progressive-web-app) |
 | `VITE_SHOW_FETCH_STATS`, `VITE_SHOW_DOWNLOAD_STATS`, `VITE_SHOW_ONLINE_VISITORS` | on | Set any to `false` to hide that counter from the footer. "Online" also needs a backend new enough to send it (`ONLINE_VISITOR_WINDOW_SECONDS` in the API) |
 
 The proxy target for `pnpm dev` and `pnpm preview` is in [vite.config.ts](vite.config.ts).
@@ -178,6 +179,7 @@ src/
     download/              download button and stop dialog
     platform-icons.tsx     platform logos (all 18) and the backend-driven grid
     service-status.tsx     health button
+    pwa-update-prompt.tsx  service worker registration and the "new version" card
     ui/                    shadcn/ui primitives
   lib/
     api.ts                 backend client: fetch, audio, stored media, platforms, health
@@ -186,6 +188,7 @@ src/
     errors.ts              ApiError, error codes to friendly text, tombstones
     media-path.ts          stable page paths (/youtube/<id>)
     preferences.ts         local preferences
+    pwa.ts                 PWA switch, update checks, clean-up when switched off
 docs/
   INTEGRATION.md           how the UI maps to each backend endpoint
   DEPLOYMENT.md            production build, Nginx, backend CORS
