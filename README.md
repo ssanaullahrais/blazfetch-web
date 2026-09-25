@@ -123,20 +123,26 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | GitHub links | A quiet "Give a star on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
 | Footer counter | The footer receives committed fetch and download totals live from `GET /api/v1/stats/events`. If the event connection fails, it polls `/stats` every two seconds while visible. Downloads count after the API finishes sending the file; queued or prepared jobs do not count yet. Hidden until valid totals are available |
 | Pull to refresh | On phones, pull down from the top to show a circular loader; releasing reloads the app on the home screen with an empty link box |
-| Settings | Default tab (video or audio), fetch on paste, sounds |
+| Settings | Download method (Automatic, Fastest or Compatible, each switchable from `.env`), default tab (video or audio), fetch on paste, sounds, and the sort options ("Audio: MP3 first", "Video: smallest first"). A popover with hover tooltips on desktop, a drawer from the bottom on phones |
+| Menu (phones) | Share, theme, and links to the frontend and backend repositories on GitHub and to the API documentation |
 | Installable app (PWA) | On by default. Visitors can install it to the home screen or desktop, it opens instantly and offline, and a "New version is available · Reload" card appears after a deploy (it never reloads by itself, so a download is not cut off). API calls always go to the network. Turn it off with `VITE_ENABLE_PWA=false` |
 
 ### Download methods
 
-Automatic is always used for now. The other methods are built in and shown as "Soon" in Settings:
+Settings offers three ways to deliver a download. All three are on by default; turn any of them off with `VITE_DOWNLOAD_METHODS` (below). Streaming always comes first because preparing a file puts load on the server:
 
 | Method | What it does |
 |---|---|
-| **Automatic** (active) | Streams straight away when the format already plays on phones (H.264 MP4); otherwise the server prepares a compatible MP4 in the same request |
-| Fastest | The quickest route to a file that plays everywhere: streams straight away when the format is ready to play, otherwise the server merges it into a normal MP4 in seconds (converting with its quickest settings only when there is no H.264 version) |
-| Compatible | The server builds an H.264/AAC MP4 first, with a real progress bar (download, then conversion), then hands it to the browser. An interrupted download can be resumed |
+| **Automatic** (`auto`) | Streams straight away, merges and HLS included; if streaming fails before the first byte, the server prepares a compatible MP4 in the same request |
+| **Fastest** (`stream`) | The same streaming, tuned for the quickest start: when the fallback has to convert, it uses ffmpeg's quickest settings |
+| **Compatible** (`prepare`) | The server builds an H.264/AAC MP4 first, with a real progress bar (download, then conversion), then hands it to the browser. An interrupted download can be resumed |
 
-To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
+Choose which of them visitors get with `VITE_DOWNLOAD_METHODS`, a comma-separated list. For example `VITE_DOWNLOAD_METHODS=auto` offers only
+Automatic (the method chooser is then hidden), and `auto,stream` drops Compatible. A visitor whose saved choice is switched off is moved to the first
+enabled method. The old `VITE_ENABLE_DOWNLOAD_METHODS=false` still means Automatic only.
+
+Audio can be delivered as MP3 for every source with `AUDIO_FORCE_MP3=true` in the **backend's** `.env`; the audio tab then lists MP3 rows with an
+estimated size, and the app needs no setting for it (see the backend's [API docs](https://github.com/ssanaullahrais/blazfetch-api/blob/master/docs/API.md#audio-as-mp3-audio_force_mp3)).
 
 ## Configuration
 
@@ -145,7 +151,7 @@ To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
 | `VITE_SITE_NAME`, `VITE_SITE_TAGLINE`, `VITE_SITE_DESCRIPTION`, `VITE_SITE_URL`, ... | BlazFetch, ... | White label and SEO: name, tagline, description, public URL and more. See [docs/BRANDING.md](docs/BRANDING.md) |
 | `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
 | `VITE_ENABLE_AUDIO_PREVIEW` | off | `true` shows the play button on audio rows (previews are off because most audio is M4A/WebM) |
-| `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks Fastest and Compatible in Settings |
+| `VITE_DOWNLOAD_METHODS` | `auto,stream,prepare` | Which download methods Settings offers: any of `auto` (Automatic), `stream` (Fastest), `prepare` (Compatible), e.g. `auto` for Automatic only |
 | `VITE_ENABLE_PWA` | on | `false` builds a plain website: no install prompt, no offline copy. Visitors who installed an earlier build are cleaned up on their next visit. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#progressive-web-app) |
 | `VITE_SHOW_FETCH_STATS`, `VITE_SHOW_DOWNLOAD_STATS`, `VITE_SHOW_ONLINE_VISITORS` | on | Set any to `false` to hide that counter from the footer. "Online" also needs a backend new enough to send it (`ONLINE_VISITOR_WINDOW_SECONDS` in the API) |
 
