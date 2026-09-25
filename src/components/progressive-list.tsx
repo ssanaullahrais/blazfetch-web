@@ -19,7 +19,7 @@ export function ProgressiveList<T>({
   const [count, setCount] = useState(pageSize);
   const [list, setList] = useState(items);
   // A new list (another link was fetched): start again from the first page. Adjusted during render, as React recommends.
-  if (list !== items) {
+  if (list !== items && !(list.length === 0 && items.length === 0)) {
     setList(items);
     setCount(pageSize);
   }
