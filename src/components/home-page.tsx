@@ -1780,7 +1780,7 @@ function AudioFormatList({
         return (
         <FormatRow
           key={f.format_id}
-          label={`${formatBitrate(f.abr) ?? f.note ?? f.ext} · ${f.ext.toUpperCase()}`}
+          label={[formatBitrate(f.abr) ?? (f.note && !/^converted/i.test(f.note) ? f.note : null), f.ext.toUpperCase()].filter(Boolean).join(" · ")}
           sub={nameFor(f.ext)}
           sizeLabel={sizeLabel}
           quality={audioQualityBadge(f.abr)}
