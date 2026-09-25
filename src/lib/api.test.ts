@@ -190,6 +190,35 @@ describe("dedupeVideoFormats", () => {
   })
 })
 
+describe("dedupeVideoFormats: formats listed without a resolution", () => {
+  const cdn = "https://scontent.cdninstagram.com/v.mp4"
+  const instagram = [
+    { formatId: "1", ext: "mp4", kind: "video" as const, url: cdn },
+    { formatId: "2", ext: "mp4", kind: "video" as const, url: cdn },
+    { formatId: "3", ext: "mp4", kind: "video" as const, url: cdn },
+    { formatId: "dash-1v", ext: "mp4", kind: "video_only" as const, height: 1920, bitrate: 1600, codec: "vp09.00.40.08", compatible: false },
+    { formatId: "dash-2v", ext: "mp4", kind: "video_only" as const, height: 1280, bitrate: 800, codec: "vp09.00.31.08", compatible: false },
+  ]
+
+  it("shows Instagram's three copies of the same file as one Original row, never a codec note as its name", () => {
+    const rows = dedupeVideoFormats(instagram, 50)
+    expect(rows.map((f) => f.resolution)).toEqual(["1920p", "1280p", "Original"])
+  })
+
+  it("estimates a size from the bitrate and duration when the source gives none", () => {
+    const [top] = dedupeVideoFormats(instagram, 50)
+    expect(top).toMatchObject({ filesize: 10_000_000, filesizeApprox: true })
+  })
+
+  it("keeps HD and SD apart (Facebook lists both without a resolution)", () => {
+    const rows = dedupeVideoFormats([
+      { formatId: "sd", ext: "mp4", kind: "video" },
+      { formatId: "hd", ext: "mp4", kind: "video" },
+    ])
+    expect(rows.map((f) => f.resolution).sort()).toEqual(["HD", "SD"])
+  })
+})
+
 describe("fallbackTitle", () => {
   it("names untitled media by platform and content", () => {
     const base = { extractor: "instagram", audioOnly: false };

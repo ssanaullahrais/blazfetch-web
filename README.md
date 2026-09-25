@@ -133,7 +133,7 @@ Automatic is always used for now. The other methods are built in and shown as "S
 | Method | What it does |
 |---|---|
 | **Automatic** (active) | Streams straight away when the format already plays on phones (H.264 MP4); otherwise the server prepares a compatible MP4 in the same request |
-| Fastest | Always streams straight away, as the source has it (a live merge for video-only formats, original codecs). Quickest start, but VP9/WebM or merged files may not play on some phones |
+| Fastest | The quickest route to a file that plays everywhere: streams straight away when the format is ready to play, otherwise the server merges it into a normal MP4 in seconds (converting with its quickest settings only when there is no H.264 version) |
 | Compatible | The server builds an H.264/AAC MP4 first, with a real progress bar (download, then conversion), then hands it to the browser. An interrupted download can be resumed |
 
 To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.

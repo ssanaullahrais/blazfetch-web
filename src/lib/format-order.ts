@@ -4,14 +4,14 @@ import type { MediaFormat } from "@/lib/api";
 export const VIDEO_ROWS = 8;
 export const AUDIO_ROWS = 5;
 
-/** Smallest file size first. An unknown size (yt-dlp can't always report one up front for DASH/fragmented formats)
- * sorts last, since there's nothing to rank it against. */
+/** Smallest file first. Sizes include estimates (bitrate x duration, see toVideoFormat); rows with no size at all
+ * go after the others, smallest resolution first, since a lower resolution is the smaller file. */
 function sortBySize(formats: MediaFormat[]): MediaFormat[] {
   return [...formats].sort((a, b) => {
-    if (a.filesize == null && b.filesize == null) return 0;
-    if (a.filesize == null) return 1;
-    if (b.filesize == null) return -1;
-    return a.filesize - b.filesize;
+    if (a.filesize != null && b.filesize != null) return a.filesize - b.filesize || (a.height ?? 0) - (b.height ?? 0);
+    if (a.filesize != null) return -1;
+    if (b.filesize != null) return 1;
+    return (a.height ?? Number.MAX_SAFE_INTEGER) - (b.height ?? Number.MAX_SAFE_INTEGER);
   });
 }
 

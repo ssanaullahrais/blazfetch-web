@@ -99,9 +99,10 @@ function keyFor(mode: "video" | "audio", format_id?: string) {
 // yt-dlp can't report an exact size for DASH/fragmented formats up front, so
 // the server estimates one from bitrate * duration — shown the same as an
 // exact size (the "Format details" dialog still notes when it's estimated).
-function sizeLabelFor(filesize: number | null) {
+/** "12.3 MB", or "~12.3 MB" for an estimate (from the bitrate, or the source's own guess). */
+function sizeLabelFor(filesize: number | null, approx = false) {
   const size = formatBytes(filesize);
-  return size ?? undefined;
+  return size ? `${approx ? "~" : ""}${size}` : undefined;
 }
 
 type BrandState = "idle" | "fetching" | "downloading";
@@ -1606,7 +1607,7 @@ function isLikelyLargeFile(format: MediaFormat): boolean {
 
 function warnIfLargeFile(format: MediaFormat): void {
   if (!isLikelyLargeFile(format)) return;
-  const size = sizeLabelFor(format.filesize);
+  const size = sizeLabelFor(format.filesize, format.filesizeApprox);
   toast(`Large file${size ? ` (${size})` : ""} — this may take a while to prepare. Please be patient.`, {
     icon: "⏳",
     duration: 6000,
@@ -1669,9 +1670,10 @@ function VideoFormatList({
         />
       )}
       {listedFormats.map((f) => {
-        const resLabel = f.resolution ?? f.note ?? f.ext;
+        // The row names the quality only; codec notes live in the details dialog, not on the card.
+        const resLabel = f.resolution ?? "Original";
         const key = keyFor("video", f.format_id);
-        const sizeLabel = sizeLabelFor(f.filesize);
+        const sizeLabel = sizeLabelFor(f.filesize, f.filesizeApprox);
         return (
         <FormatRow
           key={f.format_id}
@@ -1768,7 +1770,7 @@ function AudioFormatList({
       />
       {!bestOnly && listedFormats.map((f) => {
         const key = keyFor("audio", f.format_id);
-        const sizeLabel = sizeLabelFor(f.filesize);
+        const sizeLabel = sizeLabelFor(f.filesize, f.filesizeApprox);
         return (
         <FormatRow
           key={f.format_id}
