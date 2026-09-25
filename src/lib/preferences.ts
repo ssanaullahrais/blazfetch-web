@@ -15,6 +15,14 @@ export type Preferences = {
   disableMetadata: boolean;
   /** How the backend delivers a download: auto (stream, then prepare if needed), stream only, or prepare (H.264/AAC). */
   deliveryMode: DownloadMethod;
+  /** Off (default): the audio tab sorts by bitrate, highest first. On: MP3 first, then WEBM, then everything
+   * else, each tier still by bitrate — the source's own quality mix doesn't always put the most broadly
+   * playable format at the top. */
+  sortAudioByCompatibility: boolean;
+  /** Off (default): the video tab sorts by quality, highest resolution first (unaffected by this setting).
+   * On: smallest file size first — an unknown size (yt-dlp can't always report one up front) sorts last
+   * either way. "Best quality" still always means the true highest-resolution pick, whichever is on top. */
+  sortVideoBySmallestSize: boolean;
 };
 
 // Defaults for a fresh visitor; anything they change is stored as an override.
@@ -27,6 +35,8 @@ const HARDCODED_DEFAULTS: Preferences = {
   filenameStyle: "basic",
   disableMetadata: false,
   deliveryMode: "auto",
+  sortAudioByCompatibility: false,
+  sortVideoBySmallestSize: false,
 };
 
 /** Fastest and Compatible are switched off for now: downloads always use Automatic. ("progress" is not
