@@ -42,3 +42,14 @@ export function audioRows(formats: MediaFormat[], options: { byCompatibility: bo
   const shown = formats.slice(0, AUDIO_ROWS);
   return options.byCompatibility ? sortByCompatibility(shown) : shown;
 }
+
+const isPhoneSafeAudio = (f: MediaFormat): boolean => ["mp3", "m4a"].includes(f.ext.toLowerCase()) || /^(mp4a|aac)/i.test(f.acodec ?? "");
+
+/** The track the server picks for "best" audio: the top bitrate, unless an AAC/MP3 track is within 80% of it
+ * (it sounds the same and plays on every phone). Mirrors pickBestAudioFormat in the backend. */
+export function bestAudioFormat(formats: MediaFormat[]): MediaFormat | undefined {
+  const sorted = [...formats].sort((a, b) => (b.abr ?? 0) - (a.abr ?? 0));
+  const top = sorted[0];
+  const phoneSafe = sorted.find(isPhoneSafeAudio);
+  return top && phoneSafe && (phoneSafe.abr ?? 0) >= (top.abr ?? 0) * 0.8 ? phoneSafe : top;
+}

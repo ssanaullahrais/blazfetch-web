@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 // These tests count the requests the client makes: keep the optional Turnstile check out of them.
 vi.mock("@/lib/turnstile", () => ({ waitForPass: async () => undefined, markPassLost: () => undefined }))
-import { fallbackTitle, fetchInfo, getStoredMedia, toMediaInfo } from "@/lib/api"
+import { dedupeVideoFormats, fallbackTitle, fetchInfo, getStoredMedia, toMediaInfo } from "@/lib/api"
 import { ApiError, getTombstone } from "@/lib/errors"
 import youtube from "@/lib/__fixtures__/youtube.json"
 import youtubePlaylist from "@/lib/__fixtures__/youtube-playlist.json"
@@ -173,6 +173,20 @@ describe("fetchInfo / getStoredMedia", () => {
   it("reports a network failure as NETWORK_ERROR", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("Failed to fetch"))))
     await expect(fetchInfo("https://example.com/v")).rejects.toMatchObject({ code: "NETWORK_ERROR" })
+  })
+})
+
+describe("dedupeVideoFormats", () => {
+  it("shows YouTube's plain file for a quality, not the HLS copy listed next to it", () => {
+    const hls = "https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1/id/x/file/index.m3u8"
+    const rows = dedupeVideoFormats([
+      { formatId: "270", ext: "mp4", kind: "video_only", height: 1080, fps: 24, codec: "avc1.640028", compatible: true, url: hls },
+      { formatId: "137", ext: "mp4", kind: "video_only", height: 1080, fps: 24, codec: "avc1.640028", compatible: true, filesizeBytes: 230_439_712, url: "https://rr5.googlevideo.com/videoplayback?itag=137" },
+      { formatId: "399", ext: "mp4", kind: "video_only", height: 1080, fps: 24, codec: "av01.0.08M.08", compatible: false, filesizeBytes: 84_896_520, url: "https://rr5.googlevideo.com/videoplayback?itag=399" },
+      { formatId: "232", ext: "mp4", kind: "video_only", height: 720, fps: 24, codec: "avc1.4D401F", compatible: true, url: hls },
+      { formatId: "136", ext: "mp4", kind: "video_only", height: 720, fps: 24, codec: "avc1.4d401f", compatible: true, filesizeBytes: 85_784_276, url: "https://rr5.googlevideo.com/videoplayback?itag=136" },
+    ])
+    expect(rows.map((f) => [f.format_id, f.filesize])).toEqual([["137", 230_439_712], ["136", 85_784_276]])
   })
 })
 

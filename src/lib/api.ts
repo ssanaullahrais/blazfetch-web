@@ -277,10 +277,23 @@ function toAudioFormat(f: ApiAudioFormat): MediaFormat {
   };
 }
 
-/** Highest resolution first; one row per resolution+container, preferring browser-compatible ones. */
+/** An HLS/DASH playlist rather than the file itself. YouTube lists one next to the plain file at most qualities
+ * (no size, downloads in fragments, slower), so the plain file is the one worth showing. */
+function isManifestFormat(f: ApiFormat): boolean {
+  const url = f.url ?? "";
+  return /\.(m3u8|mpd)(\?|$)/i.test(url) || /\/(hls_playlist|dash_manifest|manifest\/dash)\//i.test(url) || /^hls/i.test(f.formatId);
+}
+
+/** Highest resolution first; one row per resolution+container, preferring browser-compatible ones, then the plain
+ * file over a playlist copy, then one whose size is known. */
 export function dedupeVideoFormats(formats: ApiFormat[]): MediaFormat[] {
   const sorted = [...formats].sort(
-    (a, b) => (b.height ?? 0) - (a.height ?? 0) || Number(b.compatible) - Number(a.compatible) || (b.fps ?? 0) - (a.fps ?? 0)
+    (a, b) =>
+      (b.height ?? 0) - (a.height ?? 0) ||
+      Number(b.compatible) - Number(a.compatible) ||
+      (b.fps ?? 0) - (a.fps ?? 0) ||
+      Number(isManifestFormat(a)) - Number(isManifestFormat(b)) ||
+      Number(b.filesizeBytes != null) - Number(a.filesizeBytes != null)
   );
   const seen = new Set<string>();
   const out: MediaFormat[] = [];
