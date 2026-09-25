@@ -279,10 +279,10 @@ function PlatformLink({
           <span className="text-center text-[10px] leading-tight text-muted-foreground">{p.name}</span>
         </a>
       </TooltipTrigger>
-      <TooltipContent>
+      <TooltipContent className="flex items-center gap-2 whitespace-nowrap">
         <span className="font-medium">{p.name}</span>
         {downloads !== undefined && (
-          <span className="mt-0.5 flex items-center gap-1 text-muted-foreground">
+          <span className="flex items-center gap-1 text-muted-foreground">
             <Download className="size-3" aria-hidden />
             {formatCount(downloads)}
             <span className="sr-only">{downloads === 1 ? "download" : "downloads"}</span>
