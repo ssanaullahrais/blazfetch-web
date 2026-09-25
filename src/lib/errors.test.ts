@@ -62,7 +62,7 @@ describe("ApiError and tombstones", () => {
 describe("friendly messages", () => {
   it.each([
     ["UNSUPPORTED_PLATFORM", /supported site/i],
-    ["MEDIA_NOT_FOUND", /couldn't be found/i],
+    ["MEDIA_NOT_FOUND", /isn't available for download/i],
     ["MEDIA_UNAVAILABLE", /no longer available/i],
     ["PRIVATE_MEDIA", /private/i],
     ["LOGIN_REQUIRED", /login/i],

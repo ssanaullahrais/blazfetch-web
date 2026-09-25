@@ -58,7 +58,7 @@ show a real response for each one.
 | YouTube | ✅ Confirmed | Video and playlists. If YouTube temporarily blocks the server's IP, a fallback provider serves the request automatically |
 | TikTok | ✅ Confirmed | Videos and slideshows |
 | Instagram | ✅ Confirmed | Posts, reels and carousels (profile listing is not supported) |
-| X / Twitter | ✅ Confirmed | Both `x.com` and `twitter.com` |
+| X / Twitter | ✅ Confirmed | Both `x.com` and `twitter.com`, including posts X hides from anonymous requests (served by the backend's fallback) |
 | Facebook | ✅ Confirmed | Reels and public videos. Posts that need a login return a clear error |
 | Reddit | ✅ Confirmed | Including separate video and audio streams |
 | Vimeo | ✅ Confirmed | DRM-protected videos return a clear error |

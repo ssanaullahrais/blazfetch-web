@@ -61,7 +61,7 @@ export function parseErrorFromText(text: string): { code: string; message: strin
 const MESSAGES: Record<string, string> = {
   UNSUPPORTED_PLATFORM: "This link isn't from a supported site.",
   INVALID_URL: "That doesn't look like a valid link.",
-  MEDIA_NOT_FOUND: "That video couldn't be found. It may have been removed, or the link is wrong.",
+  MEDIA_NOT_FOUND: "This video isn't available for download. It may be private, removed, or restricted by the platform.",
   MEDIA_UNAVAILABLE: "This video is no longer available.",
   TURNSTILE_REQUIRED: "Please wait a moment while we check that you are human, then try again.",
   TURNSTILE_FAILED: "The security check failed. Reload the page and try again.",
@@ -158,7 +158,8 @@ export function errorTitleFor(err: unknown): string {
     if (isOwnRateLimit(err)) return "Slow down";
     if (isCoolDown(err)) return "Hang tight";
     if (err.code === "UNSUPPORTED_PLATFORM") return "Not supported";
-    if (err.code === "MEDIA_NOT_FOUND" || err.code === "MEDIA_UNAVAILABLE") return "Video not found";
+    if (err.code === "MEDIA_NOT_FOUND") return "Can't download this";
+    if (err.code === "MEDIA_UNAVAILABLE") return "Video not found";
     if (err.code === "PRIVATE_MEDIA" || err.code === "LOGIN_REQUIRED" || err.code === "AGE_RESTRICTED") return "Can't download this";
   }
   if (isOffline()) return "No connection";
