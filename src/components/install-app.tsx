@@ -123,22 +123,22 @@ export function InstallToast() {
         onMouseLeave={() => setHolding(false)}
         onFocus={() => setHolding(true)}
         onBlur={() => setHolding(false)}
-        className={`fixed inset-x-4 z-40 mx-auto flex max-w-sm items-center gap-3 rounded-2xl border bg-popover p-3 text-sm text-popover-foreground shadow-lg transition-all duration-300 sm:right-4 sm:left-auto sm:mx-0 ${
+        className={`fixed inset-x-3 z-40 mx-auto flex max-w-xs items-center gap-2 rounded-xl border bg-popover p-2 text-xs text-popover-foreground shadow-lg sm:inset-x-4 sm:max-w-sm sm:gap-3 sm:rounded-2xl sm:p-3 sm:text-sm transition-all duration-300 sm:right-4 sm:left-auto sm:mx-0 ${
           visible && offered ? "translate-y-0 opacity-100" : "pointer-events-none translate-y-4 opacity-0"
         }`}
         style={{ bottom: "calc(1rem + env(safe-area-inset-bottom))" }}
       >
-        <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border bg-background">
-          <Download className="size-4" aria-hidden />
+        <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full border bg-background sm:size-9">
+          <Download className="size-3.5 sm:size-4" aria-hidden />
         </span>
         <span className="min-w-0 flex-1">
           <p className="truncate font-medium">{site.name} App</p>
-          <p className="truncate text-xs text-muted-foreground">One-tap install</p>
+          <p className="truncate text-[11px] text-muted-foreground sm:text-xs">One-tap install</p>
         </span>
-        <Button size="sm" onClick={install} tabIndex={visible ? 0 : -1}>
+        <Button size="xs" className="sm:h-8 sm:px-3 sm:text-sm" onClick={install} tabIndex={visible ? 0 : -1}>
           Install
         </Button>
-        <Button size="icon-sm" variant="ghost" aria-label="Dismiss" onClick={() => setVisible(false)} tabIndex={visible ? 0 : -1}>
+        <Button size="icon-xs" className="sm:size-8" variant="ghost" aria-label="Dismiss" onClick={() => setVisible(false)} tabIndex={visible ? 0 : -1}>
           <X />
         </Button>
       </div>
