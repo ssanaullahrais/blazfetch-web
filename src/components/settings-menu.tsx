@@ -141,7 +141,7 @@ function SettingsPanel({ tooltips }: { tooltips: boolean }) {
         onChange={set("sortAudioByCompatibility")}
       />
       <Toggle
-        label="Video: smallest first"
+        label="Video: by size"
         checked={prefs.sortVideoBySmallestSize}
         onChange={set("sortVideoBySmallestSize")}
       />
