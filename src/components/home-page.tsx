@@ -45,7 +45,7 @@ import { ShareMenu } from "@/components/share-menu";
 import { AudioWave } from "@/components/audio-wave";
 import { usePreferences } from "@/lib/preferences";
 import { playDownloadCompleteSound, playErrorSound } from "@/lib/sound";
-import { togglePlay, useIsPlaying, useAudioProgress, seekTo } from "@/lib/audioPlayer";
+import { togglePlay, useIsPlaying, useAudioProgress, seekTo, stopPlayback } from "@/lib/audioPlayer";
 import {
   fetchInfo,
   getStoredMedia,
@@ -329,6 +329,9 @@ export function HomePage() {
     previewControllers.clear();
     previewRequestSeq.clear();
     pendingFetches.clear();
+    // The previewed audio only lives in this page's memory: stop it and free it when a new link is loaded.
+    stopPlayback();
+    for (const { blobUrl } of blobCache.values()) URL.revokeObjectURL(blobUrl);
     blobCache.clear();
     userStoppedKeys.clear();
     setProgress({});
