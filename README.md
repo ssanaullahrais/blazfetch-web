@@ -132,10 +132,9 @@ Automatic is always used for now. The other methods are built in and shown as "S
 
 | Method | What it does |
 |---|---|
-| **Automatic** (active) | Streams instantly, and prepares on the server if streaming isn't possible |
-| Fastest | Direct stream only |
-| Compatible MP4 | Prepared on the server as H.264/AAC so it plays anywhere |
-| With progress bar | Server prepares the file first and reports real progress |
+| **Automatic** (active) | Streams straight away when the format already plays on phones (H.264 MP4); otherwise the server prepares a compatible MP4 in the same request |
+| Fastest | Always streams straight away, as the source has it (a live merge for video-only formats, original codecs). Quickest start, but VP9/WebM or merged files may not play on some phones |
+| Compatible | The server builds an H.264/AAC MP4 first, with a real progress bar (download, then conversion), then hands it to the browser. An interrupted download can be resumed |
 
 To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
 
@@ -146,7 +145,7 @@ To let visitors choose, build or run with `VITE_ENABLE_DOWNLOAD_METHODS=true`.
 | `VITE_SITE_NAME`, `VITE_SITE_TAGLINE`, `VITE_SITE_DESCRIPTION`, `VITE_SITE_URL`, ... | BlazFetch, ... | White label and SEO: name, tagline, description, public URL and more. See [docs/BRANDING.md](docs/BRANDING.md) |
 | `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
 | `VITE_ENABLE_AUDIO_PREVIEW` | off | `true` shows the play button on audio rows (previews are off because most audio is M4A/WebM) |
-| `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks Fastest, Compatible MP4 and With progress bar in Settings |
+| `VITE_ENABLE_DOWNLOAD_METHODS` | off | `true` unlocks Fastest and Compatible in Settings |
 | `VITE_ENABLE_PWA` | on | `false` builds a plain website: no install prompt, no offline copy. Visitors who installed an earlier build are cleaned up on their next visit. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#progressive-web-app) |
 | `VITE_SHOW_FETCH_STATS`, `VITE_SHOW_DOWNLOAD_STATS`, `VITE_SHOW_ONLINE_VISITORS` | on | Set any to `false` to hide that counter from the footer. "Online" also needs a backend new enough to send it (`ONLINE_VISITOR_WINDOW_SECONDS` in the API) |
 

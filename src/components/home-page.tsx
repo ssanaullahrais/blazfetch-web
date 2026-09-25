@@ -68,6 +68,7 @@ import { fetchStreamBlob, saveBlobToDisk, startBrowserDownload } from "@/lib/str
 import { cancelDownloadJob, startDownloadJob } from "@/lib/jobs";
 import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
 import { startNativeDownload } from "@/lib/download";
+import { audioRows, videoRows } from "@/lib/format-order";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { bumpDownloadCount } from "@/lib/site-stats";
 import { SettingsMenu } from "@/components/settings-menu";
@@ -660,7 +661,15 @@ export function HomePage() {
       if (deliveryMode === "prepare") {
         // Compatible: the server always builds the file first, so real, server-reported percent is
         // available for the whole "preparing" wait — use it instead of pacing a guess.
-        await downloadWithProgress(mode, key, urlOverride ?? fetchedUrl, format_id, controller.signal, isCurrent);
+        await downloadWithProgress(
+          mode,
+          key,
+          urlOverride ?? fetchedUrl,
+          format_id,
+          buildName(mode, media, formatMeta),
+          controller.signal,
+          isCurrent
+        );
       } else {
         // Automatic/Fastest: one request straight to the browser's download manager. It resolves when
         // bytes start flowing (or rejects with the server's own error), so "Preparing" ends exactly when
@@ -731,6 +740,7 @@ export function HomePage() {
     key: FormatKey,
     sourceUrl: string,
     format_id: string | undefined,
+    filename: string,
     signal: AbortSignal,
     isCurrent: () => boolean
   ) {
@@ -738,6 +748,7 @@ export function HomePage() {
       url: sourceUrl,
       formatId: format_id,
       kind: mode,
+      filename,
       quality: !format_id && mode === "video" ? prefs.preferredQuality : undefined,
     });
     if (!isCurrent()) return;
@@ -1587,23 +1598,7 @@ function sanitizeFilenameLocal(name: string) {
   return cleaned.slice(0, 100).trim() || "download";
 }
 
-/** Smallest file size first — an unknown size (yt-dlp can't always report one up front for DASH/fragmented
- * formats) sorts last either way, since there's nothing to rank it against. See Preferences > "Sort video by
- * smallest file size" in settings-menu.tsx. */
-function sortVideoBySize(formats: MediaFormat[]): MediaFormat[] {
-  return [...formats].sort((a, b) => {
-    if (a.filesize == null && b.filesize == null) return 0;
-    if (a.filesize == null) return 1;
-    if (b.filesize == null) return -1;
-    return a.filesize - b.filesize;
-  });
-}
-
 const LARGE_FILE_BYTES = 200 * 1024 * 1024;
-
-/** True when a format is large enough to warrant the "this will take a while" heads-up. yt-dlp doesn't
- * always report an exact size up front — when it hasn't, fall back to the same quality tier its own badge
- * already shows: "top" (2K/4K) is large enough in practice either way. */
 function isLikelyLargeFile(format: MediaFormat): boolean {
   if (format.filesize != null) return format.filesize >= LARGE_FILE_BYTES;
   return videoQualityBadge(format.height).tier === "top";
@@ -1657,8 +1652,7 @@ function VideoFormatList({
   const bestFormatId = info.videoFormats[0]?.format_id;
   // bestOnly (auto-download-best) always means the true best quality pick, whatever the display sort below
   // would otherwise put first — the two preferences are about different things and shouldn't fight.
-  const listedFormats =
-    prefs.sortVideoBySmallestSize && !bestOnly ? sortVideoBySize(info.videoFormats) : info.videoFormats;
+  const listedFormats = videoRows(info.videoFormats, { bySize: prefs.sortVideoBySmallestSize, bestOnly });
 
   return (
     <>
@@ -1674,7 +1668,7 @@ function VideoFormatList({
           }
         />
       )}
-      {listedFormats.slice(0, bestOnly ? 1 : 8).map((f) => {
+      {listedFormats.map((f) => {
         const resLabel = f.resolution ?? f.note ?? f.ext;
         const key = keyFor("video", f.format_id);
         const sizeLabel = sizeLabelFor(f.filesize);
@@ -1707,18 +1701,6 @@ function VideoFormatList({
       })}
     </>
   );
-}
-
-const AUDIO_COMPATIBILITY_RANK: Record<string, number> = { mp3: 0, webm: 1 };
-
-/** MP3 first, then WEBM, then everything else, each tier still highest-bitrate-first — the source's own
- * quality-first order doesn't always put the most broadly playable format at the top. See Preferences >
- * "Sort audio by compatibility" in settings-menu.tsx. */
-function sortAudioByCompatibility(formats: MediaFormat[]): MediaFormat[] {
-  return [...formats].sort((a, b) => {
-    const rankDiff = (AUDIO_COMPATIBILITY_RANK[a.ext.toLowerCase()] ?? 2) - (AUDIO_COMPATIBILITY_RANK[b.ext.toLowerCase()] ?? 2);
-    return rankDiff !== 0 ? rankDiff : (b.abr ?? 0) - (a.abr ?? 0);
-  });
 }
 
 function AudioFormatList({
@@ -1765,7 +1747,7 @@ function AudioFormatList({
   // The extension hint for "Best quality audio" always matches the server's own best pick (highest
   // bitrate), regardless of the compatibility sort below — that toggle only reorders the list underneath.
   const bestExt = info.audioFormats[0]?.ext;
-  const listedFormats = prefs.sortAudioByCompatibility ? sortAudioByCompatibility(info.audioFormats) : info.audioFormats;
+  const listedFormats = audioRows(info.audioFormats, { byCompatibility: prefs.sortAudioByCompatibility });
 
   return (
     <>
@@ -1784,7 +1766,7 @@ function AudioFormatList({
         previewLoading={previewLoading[keyFor("audio")]}
         previewProgress={previewProgress[keyFor("audio")]}
       />
-      {!bestOnly && listedFormats.slice(0, 5).map((f) => {
+      {!bestOnly && listedFormats.map((f) => {
         const key = keyFor("audio", f.format_id);
         const sizeLabel = sizeLabelFor(f.filesize);
         return (
