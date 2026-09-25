@@ -32,6 +32,7 @@ import {
   ListVideo,
 } from "lucide-react";
 import { PlatformIcons } from "@/components/platform-icons";
+import { setDownloadsBusy } from "@/lib/busy";
 import { FormatDetailsDialog } from "@/components/format-details-dialog";
 import { DownloadProgressButton } from "@/components/download/download-progress-button";
 import { StopDownloadDialog } from "@/components/download/stop-download-dialog";
@@ -896,6 +897,11 @@ export function HomePage() {
   // otherwise the brand mark reflects the info-fetch request instead.
   const preparingKeys = (Object.keys(downloadStatus) as FormatKey[]).filter((k) => downloadStatus[k] === "preparing");
   const isDownloading = preparingKeys.length > 0;
+  // Lets an automatic app update wait until no download is running.
+  useEffect(() => {
+    setDownloadsBusy(isDownloading);
+    return () => setDownloadsBusy(false);
+  }, [isDownloading]);
   // Real for Compatible/an audio preview, simulated for Automatic/Fastest (see simulateProgress) — either
   // way progress[key] is always populated while preparing, so this ring is never left to just spin.
   const knownProgress = preparingKeys.map((k) => progress[k] ?? 0).filter((v) => v > 0);

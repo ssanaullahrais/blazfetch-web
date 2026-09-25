@@ -1,4 +1,5 @@
 import { Settings2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -76,6 +77,11 @@ function MethodOption({
         }`}
       />
       {method.title}
+      {method.value === "auto" && (
+        <Badge variant="secondary" className="ml-auto h-5 px-1.5 text-[10px] leading-none font-medium">
+          Recommended
+        </Badge>
+      )}
     </button>
   );
   if (!tooltip) return button;
@@ -141,7 +147,7 @@ function SettingsPanel({ tooltips }: { tooltips: boolean }) {
         onChange={set("sortAudioByCompatibility")}
       />
       <Toggle
-        label="Video: by size"
+        label="Video: smallest first"
         checked={prefs.sortVideoBySmallestSize}
         onChange={set("sortVideoBySmallestSize")}
       />
@@ -180,7 +186,7 @@ export function SettingsMenu() {
     <Popover>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
       {/* Not focusing the first option on open keeps its tooltip from popping up by itself. */}
-      <PopoverContent align="end" className="w-64 gap-0 p-2" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <PopoverContent align="end" className="w-80 gap-0 p-2" onOpenAutoFocus={(e) => e.preventDefault()}>
         <p className="px-2 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Preferences</p>
         <SettingsPanel tooltips />
       </PopoverContent>
