@@ -10,12 +10,18 @@ export type DownloadCTAState = "idle" | "starting" | "queued" | "preparing" | "r
  * popover). Extracted from the homepage's original FormatRow button so
  * every surface stays pixel-identical instead of three separate
  * reimplementations quietly drifting apart: dark pill + spinner while
- * preparing, emerald once done, the default button look otherwise. There is
- * no real byte-level progress to show — resolving/merging/streaming happens
- * server-side and the browser's own download manager owns the transfer once
- * the click fires — so "preparing" is deliberately indeterminate. */
+ * preparing, emerald once done, the default button look otherwise.
+ *
+ * `progress` fills the pill and shows a percentage while preparing. It's real
+ * (from the server's own extraction progress) for the Compatible delivery
+ * method; for Automatic/Fastest, which hand the transfer straight to the
+ * browser's download manager and never see a byte count, the caller paces it
+ * with a simulated, ever-slowing climb instead of leaving it indeterminate —
+ * see simulateProgress in home-page.tsx. Omit it (or pass null) for a plain
+ * spinner with no fill, e.g. a state that genuinely has no signal at all yet. */
 export function DownloadProgressButton({
   state,
+  progress,
   onClick,
   disabled,
   size = "sm",
@@ -28,6 +34,8 @@ export function DownloadProgressButton({
   sizeLabel,
 }: {
   state: DownloadCTAState;
+  /** 0–100 while `state === "preparing"`. See the component doc comment above. */
+  progress?: number | null;
   onClick?: () => void;
   disabled?: boolean;
   size?: "sm" | "default";
@@ -58,6 +66,7 @@ export function DownloadProgressButton({
   const isQueued = state === "queued";
   const isFailed = state === "failed";
   const inProgress = isStarting || isPreparing;
+  const knownProgress = isPreparing && typeof progress === "number" ? Math.max(0, Math.min(100, Math.round(progress))) : null;
 
   return (
     <Button
@@ -79,6 +88,13 @@ export function DownloadProgressButton({
                 : "hover:bg-primary hover:text-primary-foreground"
       } ${className}`}
     >
+      {knownProgress !== null && (
+        <span
+          aria-hidden
+          className="absolute inset-y-0 left-0 bg-white/20 transition-[width] duration-300 ease-out"
+          style={{ width: `${knownProgress}%` }}
+        />
+      )}
       <span className="relative z-10 flex items-center gap-1.5">
         {isDone ? (
           <Check className="size-4 shrink-0" />
@@ -103,7 +119,9 @@ export function DownloadProgressButton({
                 : isStarting
                   ? "Starting…"
                 : isPreparing
-                  ? "Preparing…"
+                  ? knownProgress !== null
+                    ? `Preparing… ${knownProgress}%`
+                    : "Preparing…"
                   : isQueued
                     ? queuedLabel
                     : idleLabel}
