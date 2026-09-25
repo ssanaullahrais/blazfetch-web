@@ -1,5 +1,5 @@
-import { Download, ExternalLink, Search } from "lucide-react";
-import { formatCount, useSiteStats } from "@/lib/site-stats";
+import { Download, ExternalLink, Search, Users } from "lucide-react";
+import { formatCount, SHOW_DOWNLOAD_STATS, SHOW_FETCH_STATS, SHOW_ONLINE_VISITORS, useSiteStats } from "@/lib/site-stats";
 
 const REPOS = [
   { name: "Frontend", detail: "blazfetch-web", url: "https://github.com/ssanaullahrais/blazfetch-web" },
@@ -43,8 +43,28 @@ function PixelHeart() {
 
 /** Centered footer: the GitHub link and the credit, side by side with a separator on wide screens and stacked on phones. It opens the
  * project's main repository, whose README links the backend too. */
-export function GithubFooter() {
+/** Which of the three public counters to actually draw, and the sentence describing them — each one
+ * individually switched off with VITE_SHOW_FETCH_STATS / VITE_SHOW_DOWNLOAD_STATS / VITE_SHOW_ONLINE_VISITORS
+ * (all "on" unless explicitly set to "false"). Returns null when there is nothing left to show at all, so
+ * the row (and its leading separator) doesn't render as an empty line. */
+function useStatsLine() {
   const stats = useSiteStats();
+  if (!stats) return null;
+  const items = [
+    SHOW_FETCH_STATS && { key: "fetches", icon: Search, value: stats.fetches, label: "fetches" },
+    SHOW_DOWNLOAD_STATS && { key: "downloads", icon: Download, value: stats.downloads, label: "downloads" },
+    // Older backends don't send `online` yet — nothing to show until they do, same as a hidden flag.
+    SHOW_ONLINE_VISITORS && stats.online !== undefined && { key: "online", icon: Users, value: stats.online, label: "online now" },
+  ].filter((item): item is { key: string; icon: typeof Search; value: number; label: string } => !!item);
+  if (items.length === 0) return null;
+  return {
+    items,
+    description: items.map((item) => `${item.value.toLocaleString()} ${item.label}`).join(", "),
+  };
+}
+
+export function GithubFooter() {
+  const statsLine = useStatsLine();
   return (
     <footer className="absolute inset-x-0 bottom-0 text-xs text-muted-foreground">
       <div className="mx-auto flex w-full max-w-[1340px] flex-col items-center justify-center gap-1 px-4 py-4 sm:flex-row sm:gap-x-3">
@@ -62,23 +82,23 @@ export function GithubFooter() {
         <p className="inline-flex items-center gap-1">
           Developed with <PixelHeart /> by Sanaullah Rais
         </p>
-        {stats && (
+        {statsLine && (
           <>
             <span aria-hidden className="hidden text-muted-foreground/50 sm:inline">|</span>
             <p
               className="mt-2 inline-flex items-center gap-2.5 sm:mt-0"
-              title={`${stats.fetches.toLocaleString()} fetches and ${stats.downloads.toLocaleString()} downloads so far`}
-              aria-label={`${stats.fetches.toLocaleString()} fetches and ${stats.downloads.toLocaleString()} downloads so far`}
+              title={statsLine.description}
+              aria-label={statsLine.description}
             >
-              <span className="inline-flex items-center gap-1">
-                <Search className="size-3.5" aria-hidden />
-                {formatCount(stats.fetches)}
-              </span>
-              <span aria-hidden>·</span>
-              <span className="inline-flex items-center gap-1">
-                <Download className="size-3.5" aria-hidden />
-                {formatCount(stats.downloads)}
-              </span>
+              {statsLine.items.map((item, i) => (
+                <span key={item.key} className="inline-flex items-center gap-2.5">
+                  {i > 0 && <span aria-hidden>·</span>}
+                  <span className="inline-flex items-center gap-1">
+                    <item.icon className="size-3.5" aria-hidden />
+                    {formatCount(item.value)}
+                  </span>
+                </span>
+              ))}
             </p>
           </>
         )}
