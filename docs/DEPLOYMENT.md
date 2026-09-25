@@ -101,11 +101,15 @@ git pull && pnpm install --frozen-lockfile && pnpm build
 ```
 
 Copy the new `dist/` over the old one. With the PWA on, open tabs and installed apps check for the new version
-every hour and when they come back to the foreground, then show a "New version is available · Reload" card.
+every hour and when they come back to the foreground. The new version then applies itself: the app reloads quietly the moment
+the visitor leaves the page (switches tab or app) and no download is running. While the page is in view only a "New version is
+available · Reload" card is shown, so a download or a typed link is never cut off.
 
 ## Progressive web app
 
-The app is installable (home screen on phones, an install button in desktop Chrome and Edge) and opens offline. Only
+The app is installable (home screen on phones, an install button in desktop Chrome and Edge) and opens offline. It also
+shows its own floating "Install" card for a few seconds on each visit until the app is installed (plus an Install app row in the
+phone menu; iPhone and iPad get the Share, Add to Home Screen steps). Only
 the app itself is stored offline: `/api` and `/health` always go to the network, so results and downloads are never
 served stale. Offline, fetching a link says "You're offline" instead of blaming the server.
 
