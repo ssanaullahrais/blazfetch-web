@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { PWA_ENABLED } from "@/lib/pwa";
+import { PWA_ENABLED_ON_DEVICE } from "@/lib/pwa";
 
 /** Chrome's install prompt event; not in the DOM typings because it is not a standard yet. */
 interface BeforeInstallPromptEvent extends Event {
@@ -9,11 +9,11 @@ interface BeforeInstallPromptEvent extends Event {
 
 /**
  * What the app can offer for installing itself:
- * - `available`: the browser handed over its install prompt (Chrome, Edge, Samsung Internet, Android, desktop).
- * - `ios`: iPhone/iPad Safari has no prompt; the visitor has to use Share, then Add to Home Screen (we show the steps).
- * - `none`: already installed or opened as an app, the PWA is switched off, or the browser cannot install (Firefox desktop).
+ * - `available`: the browser handed over its install prompt (Chrome, Edge desktop).
+ * - `none`: already installed or opened as an app, the PWA is switched off, running on a phone/tablet (the app is
+ *   desktop-only), or the browser cannot install (Firefox desktop).
  */
-export type InstallState = "available" | "ios" | "none";
+export type InstallState = "available" | "none";
 
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 let installed = false;
@@ -29,15 +29,9 @@ function isStandalone(): boolean {
   );
 }
 
-function isIosDevice(): boolean {
-  if (typeof navigator === "undefined") return false;
-  const iPadOs = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
-  return /iphone|ipad|ipod/i.test(navigator.userAgent) || iPadOs;
-}
-
 /** Listens from the moment the app loads: the browser fires `beforeinstallprompt` only once, early. */
 export function startInstallListener(): void {
-  if (typeof window === "undefined" || !PWA_ENABLED) return;
+  if (typeof window === "undefined" || !PWA_ENABLED_ON_DEVICE) return;
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault(); // keep the event so our own button can show the prompt
     deferredPrompt = event as BeforeInstallPromptEvent;
@@ -51,9 +45,8 @@ export function startInstallListener(): void {
 }
 
 function getState(): InstallState {
-  if (!PWA_ENABLED || installed || isStandalone()) return "none";
-  if (deferredPrompt) return "available";
-  return isIosDevice() ? "ios" : "none";
+  if (!PWA_ENABLED_ON_DEVICE || installed || isStandalone()) return "none";
+  return deferredPrompt ? "available" : "none";
 }
 
 function subscribe(listener: () => void): () => void {
