@@ -100,13 +100,44 @@ already sends credentialed CORS headers. Serve both over HTTPS so the guest cook
 git pull && pnpm install --frozen-lockfile && pnpm build
 ```
 
-Copy the new `dist/` over the old one. The app registers a service worker that updates itself, so returning
-visitors get the new version on their next load.
+Copy the new `dist/` over the old one. With the PWA on, open tabs and installed apps check for the new version
+every hour and when they come back to the foreground, then show a "New version is available · Reload" card.
+
+## Progressive web app
+
+The app is installable (home screen on phones, an install button in desktop Chrome and Edge) and opens offline. Only
+the app itself is stored offline: `/api` and `/health` always go to the network, so results and downloads are never
+served stale. Offline, fetching a link says "You're offline" instead of blaming the server.
+
+To turn it off, build with the variable set (or put `VITE_ENABLE_PWA=false` in `.env.production`):
+
+```bash
+VITE_ENABLE_PWA=false pnpm build
+```
+
+The site then has no manifest and no install prompt. `sw.js` is still published, as a worker that removes itself and its
+cache, so visitors who installed an earlier build get the plain site on their next visit. Keep it deployed for a while
+after switching off. Turning the PWA back on later needs no clean-up.
+
+A browser only checks for a new version if it can fetch fresh copies of the worker files, so tell Nginx not to cache them
+(put this next to `location /`):
+
+```nginx
+location ~ ^/(sw\.js|workbox-[^/]+\.js|manifest\.webmanifest|index\.html)$ {
+    add_header Cache-Control "no-cache" always;
+    try_files $uri =404;
+}
+```
+
+Install and offline mode need HTTPS (or `localhost`). The worker is served from this site, which the
+`worker-src 'self'` and `manifest-src 'self'` entries in the security headers above already allow. Nginx drops the
+`server` block's security headers inside a `location` with its own `add_header`, so repeat them there if you use them.
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
+| A deploy doesn't show up, or the "new version" card never appears | `sw.js` is cached by Nginx or a CDN. Serve it with `Cache-Control: no-cache` (see [Progressive web app](#progressive-web-app)) |
 | Blank page on a stable link such as `/youtube/<id>` after reload | Nginx must fall back to `index.html` (`try_files $uri /index.html`). |
 | Every request fails or the status button is red | `/api` and `/health` must be proxied to the backend. Check `https://your-domain/health/ready`. |
 | Downloads start but errors are never shown | The API is on another origin. Serve `/api` from the same domain. |

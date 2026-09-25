@@ -8,7 +8,7 @@ import { createSite, type Site } from "./src/config/site"
 const escapeAttr = (text: string): string => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
 /** Fills the %SITE_*% placeholders in index.html and writes robots.txt and sitemap.xml from src/config/site.ts. */
-function siteIdentity(site: Site): Plugin {
+function siteIdentity(site: Site, pwaEnabled: boolean): Plugin {
   const jsonLd = JSON.stringify({
     "@context": "https://schema.org",
     "@type": "WebApplication",
@@ -29,6 +29,11 @@ function siteIdentity(site: Site): Plugin {
     SITE_LANGUAGE: site.language,
     SITE_TWITTER_TAG: site.twitter ? `<meta name="twitter:site" content="${escapeAttr(site.twitter)}" />` : "",
     SITE_JSON_LD: jsonLd,
+    // Home-screen launches open without browser chrome on iOS only while the app is offered as a PWA.
+    SITE_PWA_META: pwaEnabled
+      ? `<meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />`
+      : "",
   };
   return {
     name: "site-identity",
@@ -59,14 +64,24 @@ Sitemap: ${site.url}/sitemap.xml
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
-  const site = createSite({ ...loadEnv(mode, process.cwd(), "VITE_"), ...process.env });
+  const env = { ...loadEnv(mode, process.cwd(), "VITE_"), ...process.env };
+  const site = createSite(env);
+  // VITE_ENABLE_PWA=false turns the installable app and offline shell off. Keep the same value in src/lib/pwa.ts.
+  const pwaEnabled = env.VITE_ENABLE_PWA !== "false";
   return {
   plugins: [
     react(),
     tailwindcss(),
-    siteIdentity(site),
+    siteIdentity(site, pwaEnabled),
     VitePWA({
-      registerType: "autoUpdate",
+      // A new version waits until the visitor taps "Reload" (src/components/pwa-update-prompt.tsx), so an update
+      // never reloads the page in the middle of a download.
+      registerType: "prompt",
+      // Registered from the app (src/lib/pwa.ts), not by an injected script.
+      injectRegister: false,
+      // With the PWA off, sw.js is still published, as a worker that unregisters itself and deletes its caches.
+      // Visitors who installed an earlier build pick it up on their next visit and go back to a plain website.
+      selfDestroying: !pwaEnabled,
       // Never precache/intercept API calls — this app is almost entirely
       // live data (fetch results, download progress);
       // caching any of that would mean serving stale or wrong data offline
@@ -78,24 +93,35 @@ export default defineConfig(({ mode }) => {
       // on a phone instead of showing a blank white screen while it
       // refetches its own JS bundle on a slow connection.
       workbox: {
-        navigateFallbackDenylist: [/^\/api\//, /^\/health/],
+        // Opening robots.txt or sitemap.xml in the browser must show the file, not the app.
+        navigateFallbackDenylist: [/^\/api\//, /^\/health/, /^\/robots\.txt$/, /^\/sitemap\.xml$/],
         globPatterns: ["**/*.{js,css,html,woff2,png,svg,ico}"],
+        // Only link-preview crawlers read the share image, and vite.svg is unused, so neither is kept offline.
+        globIgnores: ["og-image.png", "vite.svg"],
+        cleanupOutdatedCaches: true,
       },
-      includeAssets: ["favicon-32.png", "apple-touch-icon.png"],
-      manifest: {
-        name: site.name,
-        short_name: site.name,
-        description: site.tagline,
-        start_url: "/",
-        display: "standalone",
-        background_color: site.themeColor,
-        theme_color: site.themeColor,
-        icons: [
-          { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-          { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-          { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-        ],
-      },
+      // The icons already match globPatterns above; listing them again would precache them twice.
+      includeManifestIcons: false,
+      manifest: pwaEnabled
+        ? {
+            id: "/",
+            name: site.name,
+            short_name: site.name,
+            description: site.tagline,
+            lang: site.language,
+            start_url: "/",
+            scope: "/",
+            display: "standalone",
+            background_color: site.themeColor,
+            theme_color: site.themeColor,
+            categories: ["utilities", "multimedia"],
+            icons: [
+              { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+              { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+              { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+            ],
+          }
+        : false,
     }),
   ],
   resolve: {
