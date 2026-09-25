@@ -31,6 +31,16 @@ describe("getSiteStats", () => {
     vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => data })));
     await expect(getSiteStats()).resolves.toBeNull();
   });
+
+  it('includes online when the backend sends it', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ success: true, fetches: 12, downloads: 5, online: 3 }) })));
+    await expect(getSiteStats()).resolves.toEqual({ fetches: 12, downloads: 5, online: 3 });
+  });
+
+  it.each([{ online: -1 }, { online: 1.5 }, { online: 'three' }, {}])('omits online rather than rejecting the whole payload for %j', async (extra) => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => ({ success: true, fetches: 12, downloads: 5, ...extra }) })));
+    await expect(getSiteStats()).resolves.toEqual({ fetches: 12, downloads: 5 });
+  });
 });
 
 describe('live site stats', () => {
