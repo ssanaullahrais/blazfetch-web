@@ -103,6 +103,9 @@ export default defineConfig(({ mode }) => {
         skipWaiting: true,
         clientsClaim: true,
       },
+      // Serve the manifest and a worker in `pnpm dev` too, so the Install app option also shows on localhost while
+      // developing (browsers only offer install with a manifest and a service worker). The dev worker caches nothing.
+      devOptions: { enabled: pwaEnabled, type: "module", navigateFallback: "index.html" },
       // The icons already match globPatterns above; listing them again would precache them twice.
       includeManifestIcons: false,
       manifest: pwaEnabled
