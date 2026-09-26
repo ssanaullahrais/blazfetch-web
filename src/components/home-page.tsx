@@ -86,7 +86,7 @@ import { TurnstileWidget } from "@/components/turnstile-widget";
 import { API_DOCS_URL, GithubFooter, GithubMark, REPOS } from "@/components/github-link";
 import { InstallApp } from "@/components/install-app";
 import { UnavailableCard } from "@/components/unavailable-card";
-import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES } from "@/lib/download-format-presentation";
+import { BEST_BADGE_CLASS, QUALITY_BADGE_CLASSES, RECOMMENDED_BADGE_CLASS } from "@/lib/download-format-presentation";
 import { coerceMediaUrl } from "@/lib/media-url";
 
 type FormatKey = string;
@@ -1826,6 +1826,7 @@ function VideoFormatList({
           quality={videoQualityBadge(f.height)}
           format={f}
           best={f.format_id === bestFormatId}
+          recommended={resLabel === "Original" && f.format_id !== bestFormatId}
           mediaType="video"
           status={downloadStatus[key]}
           progress={progress[key]}
@@ -1963,6 +1964,7 @@ function FormatRow({
   durationLabel,
   quality,
   best,
+  recommended,
   mediaType,
   status,
   progress,
@@ -1985,6 +1987,9 @@ function FormatRow({
   durationLabel?: string;
   quality?: { label: string; tier: "top" | "high" | "mid" | "low" };
   best?: boolean;
+  /** The source's own untouched file: always plays, but its real resolution is unknown, so it keeps this badge
+   * instead of competing with the true highest-quality pick for "★ Best". */
+  recommended?: boolean;
   mediaType?: "video" | "audio";
   status?: "queued" | "preparing" | "ready" | "downloaded";
   /** 0–100 while `status === "preparing"` — real for the Compatible delivery method, simulated otherwise. */
@@ -2105,6 +2110,10 @@ function FormatRow({
               {best ? (
                 <Badge className={`h-5 shrink-0 py-0 px-1.5 text-[10px] leading-none font-semibold ${BEST_BADGE_CLASS}`}>
                   ★ Best
+                </Badge>
+              ) : recommended ? (
+                <Badge className={`h-5 shrink-0 py-0 px-1.5 text-[10px] leading-none font-semibold ${RECOMMENDED_BADGE_CLASS}`}>
+                  Recommended
                 </Badge>
               ) : (
                 quality && (

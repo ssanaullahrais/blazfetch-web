@@ -10,6 +10,11 @@ export const QUALITY_BADGE_CLASSES: Record<string, string> = {
 export const BEST_BADGE_CLASS =
   "border-transparent bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 text-amber-950 shadow-sm shadow-amber-500/40";
 
+/** The source's own untouched file: its real resolution is unknown, so it never earns "★ Best" on quality alone,
+ * but it needs no merge/remux and always plays, which earns it this badge and the top spot in the list instead. */
+export const RECOMMENDED_BADGE_CLASS =
+  "border-transparent bg-gradient-to-r from-emerald-400 to-teal-500 text-white shadow-sm shadow-emerald-500/30";
+
 /** The one rule that turns persisted format metadata into the same label and
  * quality tier used on the homepage, live jobs, Recent, Library, and admin. */
 export function getDownloadFormatPresentation(row: {

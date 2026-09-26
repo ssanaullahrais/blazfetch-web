@@ -26,6 +26,17 @@ function sortByCompatibility(formats: MediaFormat[]): MediaFormat[] {
   });
 }
 
+/** The source's own untouched file has no parsed resolution, so it is shown as "Original" (see unsizedLabel in
+ * api.ts) rather than a height. It always plays (no merge/remux needed) even when it isn't the highest quality,
+ * which earns it the top spot regardless of the size sort below. */
+function pinOriginalFirst(formats: MediaFormat[]): MediaFormat[] {
+  // Mirrors the row's own display fallback (resolution ?? "Original") so what's pinned matches what's labeled.
+  const isOriginal = (f: MediaFormat): boolean => (f.resolution ?? "Original") === "Original";
+  const original = formats.filter(isOriginal);
+  if (original.length === 0) return formats;
+  return [...original, ...formats.filter((f) => !isOriginal(f))];
+}
+
 /**
  * The video rows a result shows, in display order. The sort settings only reorder the rows the list offers anyway
  * (the highest qualities); they never swap them for others, which sorting everything first and then cutting the
@@ -34,7 +45,7 @@ function sortByCompatibility(formats: MediaFormat[]): MediaFormat[] {
 export function videoRows(formats: MediaFormat[], options: { bySize: boolean; bestOnly?: boolean }): MediaFormat[] {
   if (options.bestOnly) return formats.slice(0, 1);
   const shown = formats.slice(0, VIDEO_ROWS);
-  return options.bySize ? sortBySize(shown) : shown;
+  return pinOriginalFirst(options.bySize ? sortBySize(shown) : shown);
 }
 
 /** The audio rows a result shows, in display order (see videoRows). */
