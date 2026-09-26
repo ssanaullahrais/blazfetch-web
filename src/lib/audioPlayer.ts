@@ -119,6 +119,12 @@ export function togglePlay(key: string, src: string) {
   notify();
 }
 
+/** Pauses whatever is playing, keeping its position and the owner row's controls visible (e.g. leaving the
+ * Audio tab shouldn't keep a preview playing silently in the background). No-op if nothing is playing. */
+export function pausePlayback() {
+  audio?.pause();
+}
+
 /** Stops playback and lets go of the loaded file, so the memory behind a previewed track can be freed. */
 export function stopPlayback() {
   if (!audio) return;
