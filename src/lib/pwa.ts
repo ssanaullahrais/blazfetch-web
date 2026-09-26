@@ -21,8 +21,12 @@ function isMobileOrTabletDevice(): boolean {
   return navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
 }
 
+/** Computed once per page load (a device's type doesn't change mid-session): reused anywhere the app needs to
+ * tell a phone/tablet apart from a desktop browser, not just for the PWA install prompt below. */
+export const IS_PHONE_OR_TABLET = isMobileOrTabletDevice();
+
 /** PWA_ENABLED narrowed to desktop: the switch to check anywhere the app decides whether to act like an installable app. */
-export const PWA_ENABLED_ON_DEVICE = PWA_ENABLED && !isMobileOrTabletDevice();
+export const PWA_ENABLED_ON_DEVICE = PWA_ENABLED && !IS_PHONE_OR_TABLET;
 
 /** How often an open (or installed and resumed) app asks the server whether a new version was deployed. */
 const UPDATE_CHECK_INTERVAL_MS = 60 * 60 * 1000;
