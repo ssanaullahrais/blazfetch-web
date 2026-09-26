@@ -513,6 +513,16 @@ export async function getStoredMedia(path: string): Promise<MediaInfo> {
   return withAudioOptions(info, info.webpage_url);
 }
 
+export type MediaLogLine = { ts: number; level: "info" | "warn" | "error"; message: string };
+export type MediaLogAttempt = { requestId: string; startedAt: number; lines: MediaLogLine[] };
+
+/** GET /api/v1/media/<platform>/<id>/logs: this visitor's own recent download attempts for this media, if
+ * any are still on record (see docs/API.md). 404s (as ApiError) when none belong to this visitor. */
+export async function getMediaLogs(platform: string, id: string): Promise<MediaLogAttempt[]> {
+  const data = await request<{ attempts: MediaLogAttempt[] }>(`/media/${encodeURIComponent(platform)}/${encodeURIComponent(id)}/logs`);
+  return data.attempts;
+}
+
 let platformsPromise: Promise<Platform[]> | null = null;
 /** Supported platforms as reported by the backend (cached for the session). */
 export function getPlatforms(): Promise<Platform[]> {
