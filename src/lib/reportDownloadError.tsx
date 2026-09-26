@@ -20,9 +20,10 @@ export function reportDownloadError(
   kind?: "video" | "audio"
 ) {
   const rawMessage = err instanceof Error ? err.message : `${actionLabel} failed.`;
-  console.error(`[${actionLabel.toLowerCase()}]`, rawMessage);
   void _sourceUrl;
   const coolDown = isCoolDown(err);
+  // Being at capacity is expected, handled behaviour, not a bug: only a real failure is worth an error-level log.
+  if (!coolDown) console.error(`[${actionLabel.toLowerCase()}]`, rawMessage);
   const message = coolDown ? alreadyDownloading(kind) : friendlyErrorFor(err);
   // A busy server is a short wait, not a failure: friendly wording and an orange alert instead of a red error, no error sound.
   const options = toastId ? { id: toastId } : undefined;
