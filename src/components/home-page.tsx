@@ -32,7 +32,6 @@ import {
   Moon,
   TriangleAlert,
   ListVideo,
-  Monitor,
 } from "lucide-react";
 import { PlatformIcons } from "@/components/platform-icons";
 import { ProgressiveList } from "@/components/progressive-list";
@@ -1972,8 +1971,9 @@ function FormatRow({
   /** The source's own untouched file: always plays, but its real resolution is unknown, so it keeps this badge
    * instead of competing with the true highest-quality pick for "★ Best". */
   recommended?: boolean;
-  /** See phoneIncompatibleFormatIds (format-order.ts): the Download button becomes a disabled-looking "Desktop
-   * only" one that explains why on click, instead of a working download most phones can't play back anyway. */
+  /** See phoneIncompatibleFormatIds (format-order.ts): the Download button reads "Desktop only" and, on click,
+   * opens a dialog explaining why and letting the visitor download anyway if they want, instead of starting a
+   * download most phones can't play back straight away. */
   phoneIncompatible?: boolean;
   mediaType?: "video" | "audio";
   status?: "queued" | "preparing" | "ready" | "downloaded";
@@ -2143,15 +2143,17 @@ function FormatRow({
           {phoneIncompatible ? (
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  onClick={() => setShowPhoneCompatDialog(true)}
-                  className="w-full min-w-0 flex-1 border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 sm:w-auto sm:flex-none dark:text-amber-400"
-                >
-                  <Monitor className="size-4" /> Desktop only
-                </Button>
+                <span className="min-w-0 flex-1 sm:flex-none">
+                  <DownloadProgressButton
+                    state="idle"
+                    idleLabel="Desktop only"
+                    onClick={() => setShowPhoneCompatDialog(true)}
+                    sizeLabel={sizeLabel}
+                    className="w-full sm:w-auto"
+                  />
+                </span>
               </TooltipTrigger>
-              <TooltipContent>This format needs a desktop or laptop to play</TooltipContent>
+              <TooltipContent>May not play on your phone — click for options</TooltipContent>
             </Tooltip>
           ) : (() => {
             const downloadButton = (
@@ -2244,7 +2246,12 @@ function FormatRow({
         )}
       </AnimatePresence>
       {phoneIncompatible && (
-        <PhoneCompatDialog open={showPhoneCompatDialog} onOpenChange={setShowPhoneCompatDialog} codec={format?.vcodec} />
+        <PhoneCompatDialog
+          open={showPhoneCompatDialog}
+          onOpenChange={setShowPhoneCompatDialog}
+          codec={format?.vcodec}
+          onConfirmDownload={onDownload}
+        />
       )}
     </div>
   );
