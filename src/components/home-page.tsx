@@ -49,7 +49,7 @@ import { ShareMenu } from "@/components/share-menu";
 import { AudioWave } from "@/components/audio-wave";
 import { usePreferences } from "@/lib/preferences";
 import { playDownloadCompleteSound, playErrorSound } from "@/lib/sound";
-import { togglePlay, useIsPlaying, useAudioProgress, seekTo, stopPlayback } from "@/lib/audioPlayer";
+import { togglePlay, useIsPlaying, useAudioProgress, seekTo, stopPlayback, pausePlayback } from "@/lib/audioPlayer";
 import {
   fetchInfo,
   getStoredMedia,
@@ -1287,7 +1287,11 @@ export function HomePage() {
 
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as "video" | "audio" | "images" | "stories")}
+            onValueChange={(v) => {
+              // Leaving the Audio tab shouldn't leave a preview playing silently out of view.
+              if (activeTab === "audio" && v !== "audio") pausePlayback();
+              setActiveTab(v as "video" | "audio" | "images" | "stories");
+            }}
             className="-mt-2 px-4 pb-4"
           >
             {info.type === "images" ? (
