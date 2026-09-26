@@ -1383,9 +1383,16 @@ export function HomePage() {
                 {stories && (
                   <TabsContent value="stories" className="flex flex-col gap-2 pt-3">
                     {stories.status === "loading" || !stories.info ? (
-                      <p className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
-                        <Loader2 className="size-3.5 animate-spin" /> Looking for stories…
-                      </p>
+                      <Card className="card-texture overflow-hidden rounded-md border-0 p-0 shadow-xs">
+                        <div className="flex gap-4 p-4">
+                          <Skeleton className="h-24 w-40 rounded-md" />
+                          <div className="flex flex-1 flex-col gap-2 py-1">
+                            <Skeleton className="h-4 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                            <Skeleton className="h-4 w-1/3" />
+                          </div>
+                        </div>
+                      </Card>
                     ) : (
                       <>
                         {(stories.info.carouselVideos?.length ?? 0) > 0 && (
