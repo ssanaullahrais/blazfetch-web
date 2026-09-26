@@ -53,11 +53,15 @@ function fakeEnv(overrides: Partial<DownloadEnv> = {}) {
   const cookies = new Set<string>()
   const log = { frameUrls: [] as string[], removed: 0, navigated: [] as string[], cleared: [] as string[] }
   let loadCallback: (() => void) | undefined
+  let errorCallback: (() => void) | undefined
   let pageText: string | null = ""
 
   const frame: FrameHandle = {
     onLoad: (cb) => {
       loadCallback = cb
+    },
+    onError: (cb) => {
+      errorCallback = cb
     },
     bodyText: () => pageText,
     remove: () => {
@@ -88,6 +92,9 @@ function fakeEnv(overrides: Partial<DownloadEnv> = {}) {
     showPage: (text: string) => {
       pageText = text
       loadCallback?.()
+    },
+    triggerConnectionError: () => {
+      errorCallback?.()
     },
   }
 }
@@ -132,6 +139,16 @@ describe("startBrowserDownload", () => {
     t.showPage('{"success":false,"error":{"code":"PRIVATE_MEDIA","message":"This media is private."}}')
     await assertion
     await expect(promise).rejects.toBeInstanceOf(ApiError)
+    expect(t.log.removed).toBe(1)
+  })
+
+  it("rejects immediately on a raw connection failure, instead of waiting out maxWaitMs", async () => {
+    const t = fakeEnv()
+    const promise = startBrowserDownload(params, { env: t.env, maxWaitMs: 5000 })
+    const assertion = expect(promise).rejects.toMatchObject({ code: "DOWNLOAD_FAILED" })
+    await vi.advanceTimersByTimeAsync(1000) // well before maxWaitMs
+    t.triggerConnectionError()
+    await assertion
     expect(t.log.removed).toBe(1)
   })
 

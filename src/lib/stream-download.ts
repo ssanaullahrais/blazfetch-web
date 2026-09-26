@@ -48,6 +48,8 @@ export const START_COOKIE_PREFIX = "blazfetch_dl_";
 
 export interface FrameHandle {
   onLoad(callback: () => void): void;
+  /** A connection-level failure (reset, refused, DNS) that never produced a response to read at all. */
+  onError(callback: () => void): void;
   /** The text of the page the frame ended up on, or null when it can't be read. */
   bodyText(): string | null;
   remove(): void;
@@ -81,6 +83,7 @@ function browserEnv(): DownloadEnv {
       iframe.src = url;
       return {
         onLoad: (callback) => iframe.addEventListener("load", callback),
+        onError: (callback) => iframe.addEventListener("error", callback),
         bodyText: () => {
           try {
             return iframe.contentDocument?.documentElement?.textContent ?? null;
@@ -175,6 +178,13 @@ function startBrowserDownloadNow(params: StreamParams, options: StartOptions = {
       const text = frame.bodyText();
       const failure = text ? parseErrorFromText(text) : null;
       if (failure) settle(() => reject(new ApiError(failure.code, failure.message)));
+    });
+
+    // A raw connection failure (reset, refused, no response at all) never fires "load" with a readable
+    // body in most browsers, so without this the page would otherwise sit there until maxWaitMs — up to
+    // several minutes of a "Preparing" spinner for a download that was never going to start.
+    frame.onError(() => {
+      settle(() => reject(new ApiError("DOWNLOAD_FAILED", "The download failed to start. Please try again.")));
     });
 
     signal?.addEventListener("abort", onAbort, { once: true });
