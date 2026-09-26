@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest"
 import type { MediaFormat } from "@/lib/api"
-import { audioRows, bestAudioFormat, videoRows } from "@/lib/format-order"
+import { audioRows, bestAudioFormat, bestVideoFormat, videoRows } from "@/lib/format-order"
 
-const fmt = (id: string, height: number | null, filesize: number | null, ext = "mp4", abr: number | null = null): MediaFormat => ({
+const fmt = (
+  id: string,
+  height: number | null,
+  filesize: number | null,
+  ext = "mp4",
+  abr: number | null = null,
+  compatible = true
+): MediaFormat => ({
   format_id: id,
   ext,
   resolution: height ? `${height}p` : null,
@@ -17,6 +24,7 @@ const fmt = (id: string, height: number | null, filesize: number | null, ext = "
   tbr: null,
   vcodec: null,
   acodec: null,
+  compatible,
 })
 
 // Highest quality first, as the API mapping hands them over: ten formats, so the list is cut to eight.
@@ -69,6 +77,31 @@ describe("bestAudioFormat", () => {
   it("matches the server: AAC over a WebM track of about the same bitrate, the top bitrate otherwise", () => {
     expect(bestAudioFormat([fmt("251", null, 1, "webm", 135), fmt("140", null, 1, "m4a", 129)])?.format_id).toBe("140")
     expect(bestAudioFormat([fmt("opus", null, 1, "webm", 160), fmt("aac", null, 1, "m4a", 48)])?.format_id).toBe("opus")
+  })
+})
+
+describe("bestVideoFormat", () => {
+  it("matches the server: an H.264 copy at 720p or higher over a sharper VP9/AV1-only source", () => {
+    const formats = [
+      fmt("2160-vp9", 2160, 80_000_000, "webm", null, false),
+      fmt("1440-vp9", 1440, 34_000_000, "webm", null, false),
+      fmt("1080-h264", 1080, 18_000_000, "mp4", null, true),
+      fmt("720-h264", 720, 6_000_000, "mp4", null, true),
+    ]
+    expect(bestVideoFormat(formats)?.format_id).toBe("1080-h264")
+  })
+
+  it("falls back to the true highest quality when no compatible format reaches 720p", () => {
+    const formats = [
+      fmt("2160-vp9", 2160, 80_000_000, "webm", null, false),
+      fmt("480-h264", 480, 3_000_000, "mp4", null, true),
+    ]
+    expect(bestVideoFormat(formats)?.format_id).toBe("2160-vp9")
+  })
+
+  it("picks the true highest quality when it is itself compatible", () => {
+    const formats = [fmt("1080-h264", 1080, 18_000_000, "mp4", null, true), fmt("720-h264", 720, 6_000_000, "mp4", null, true)]
+    expect(bestVideoFormat(formats)?.format_id).toBe("1080-h264")
   })
 })
 
