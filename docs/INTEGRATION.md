@@ -12,11 +12,7 @@ credentials so the backend's guest cookie (`blazfetch_guest_id`) works. See the
 | `POST /fetch` | Resolve a link: metadata, formats, carousels, playlists, boards. Sends `forceRefresh` (Refresh button) and `rangeStart` / `rangeEnd` (range picker) | `fetchInfo()` |
 | `POST /fetch/audio` | Audio options, including the MP3-conversion option | `fetchInfo()` (called together with `/fetch` for video sources) |
 | `GET /media/<platform>/<id>` (and `/playlist/<id>`) | Open a stored page by its stable path, no re-extraction. 410 `MEDIA_UNAVAILABLE` carries a tombstone | `getStoredMedia()` |
-| `GET /stream?url&kind&formatId&filename&mode&token` | One-request download (default for Download). `mode` is `auto`, `stream` or `prepare` | `startBrowserDownload()`, `fetchStreamBlob()` |
-| `POST /download` | Job-based download flow, used for the Compatible delivery method | `startDownloadJob()` |
-| `GET /jobs/:id` | Poll status and progress every second | `getDownloadJob()`, `waitForDownloadJob()` |
-| `GET /downloads/:id` | The file itself (browser download, or audio preview) | `downloadJobFileUrl()`, `requestDownloadJobFile()` |
-| `DELETE /downloads/:id` | Stop: cancels the job, ends yt-dlp/ffmpeg and removes temp files | `cancelDownloadJob()` |
+| `GET /stream?url&kind&formatId&filename&mode&token` | One-request download, used for every Download click (always `mode=auto`; the backend decides whether to stream live or prepare a compatible file) | `startBrowserDownload()`, `fetchStreamBlob()` |
 | `GET /stats` | The footer counters (all-time successful fetches and downloads) and each social icon's download count (`platforms`, per platform id) | `getSiteStats()` |
 | `GET /stats/events` | Live committed totals over server-sent events; reconnects after interruptions | `watchSiteStats()` |
 | `GET /platforms` | Platform list for the logo grid | `getPlatforms()` |
@@ -24,38 +20,20 @@ credentials so the backend's guest cookie (`blazfetch_guest_id`) works. See the
 
 ## Download flow
 
-Default (`GET /stream`): the app navigates a hidden frame to the stream URL with a random `token`, so the browser
-download manager takes over and nothing is buffered in memory. The backend sets the cookie
+Every Download click uses `GET /stream?mode=auto`: the app navigates a hidden frame to the stream URL with a random
+`token`, so the browser download manager takes over and nothing is buffered in memory. The backend decides on its
+own whether to pipe the source straight through or build a compatible H.264/AAC file first — there is no
+frontend setting for this anymore (see `src/lib/stream-download.ts`). The backend sets the cookie
 `blazfetch_dl_<token>` once bytes flow; the app polls for it to show "Started". If the frame instead shows a JSON
-error, the app reads it and shows the friendly message. Stop removes the frame, which ends the server's processes.
-The delivery mode comes from Settings: Automatic (`auto`) and Fastest (`stream`) use this request; Compatible
-uses the job flow below. Which of them Settings offers is set with `VITE_DOWNLOAD_METHODS` (default: all three). Audio previews use `fetch` and a blob.
+error, the app reads it and shows the friendly message; a raw connection failure (the frame's `error` event, e.g. a
+timeout before any bytes went out) is treated the same way instead of waiting out the full give-up timer. Stop
+removes the frame, which ends the server's processes. Audio previews use `fetch` and a blob instead, so the page can
+play the file without a second request when the visitor then clicks Download.
 If the API is on another origin the frame cannot be observed, so the app falls back to plain navigation.
 
-Compatible (`POST /download`, the job flow with a real progress bar):
-
-1. The user clicks Download on a format row. The frontend calls `POST /download` with
-   `{ url, formatId, kind, filename }` (`formatId` is omitted for "Best quality", which the backend resolves;
-   `filename` is the same name the other methods use, without extension).
-2. It polls `GET /jobs/:id` every second and shows the job's `progress` on the button ("Preparing…"). The backend's
-   progress covers the whole job: the download up to 90%, then the conversion to H.264/AAC (when the source needs
-   one) up to 99%.
-3. When the job is `ready` or `completed`, it starts the browser download from `GET /downloads/:id`. The backend
-   sends `Content-Disposition: attachment` with the file's title, so the page stays where it is.
-4. Stop calls `DELETE /downloads/:id`.
-
-Job states are mapped in `toJobStatus()`:
-
-| Backend | UI |
-|---|---|
-| `queued` | queued |
-| `preparing`, `streaming` | running (Preparing…) |
-| `ready`, `completed` | ready (download starts) |
-| `failed` | error (shows `errorMessage`) |
-| `cancelled`, `expired` | cancelled |
-
-The job file answers `Range` requests, so a download the browser lost halfway (common on phones) resumes. The backend
-removes its temporary copy once the last byte has been sent, so a finished job cannot be downloaded a second time.
+The backend also exposes a job-based flow (`POST /download`, `GET /jobs/:id`, `GET`/`DELETE /downloads/:id`) with a
+real byte-based progress percentage; the official frontend no longer uses it; see the backend's `docs/API.md` if you're
+integrating your own client and want that instead of `GET /stream`.
 
 ## How responses are mapped to the UI
 

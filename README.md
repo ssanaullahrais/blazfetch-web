@@ -122,24 +122,17 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Animated logo | The header logo cycles copy link, paste and download, and shows the fetch and download progress ring around it (still when the device asks for reduced motion) |
 | GitHub links | A quiet "Give a star on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
 | Footer counter | The footer receives committed fetch and download totals live from `GET /api/v1/stats/events`. If the event connection fails, it polls `/stats` every two seconds while visible. Downloads count after the API finishes sending the file; queued or prepared jobs do not count yet. Hidden until valid totals are available |
-| Pull to refresh | On phones, pull down from the top to show a circular loader; releasing reloads the app on the home screen with an empty link box |
-| Settings | Download method (Automatic, Fastest or Compatible, each switchable from `.env`), default tab (video or audio), fetch on paste, sounds, and the sort options ("Audio: MP3 first", "Video: smallest first"). A popover with hover tooltips on desktop, a drawer from the bottom on phones |
+| Settings | Default tab (video or audio), fetch on paste, sounds, and the sort options ("Audio: MP3 first", "Video: smallest first"). A popover on desktop, a drawer from the bottom on phones |
 | Menu (phones) | Share, theme, and links to the frontend and backend repositories on GitHub and to the API documentation |
 | Installable app (PWA) | On by default. Visitors can install it to the home screen or desktop with a floating "Install" card that appears for a few seconds on each visit until the app is installed, and an **Install app** row in the phone menu (on iPhone and iPad it shows the Share, Add to Home Screen steps, and it is hidden once installed or where the browser cannot install), it opens instantly and offline, and after a deploy it updates itself: it checks hourly and whenever the app is reopened, then reloads quietly the moment the visitor leaves the page and no download is running. While the page is in view only a "New version is available · Reload" card is shown, so a download is never cut off. API calls always go to the network. Turn it off with `VITE_ENABLE_PWA=false`. `pnpm dev` serves the manifest and a service worker too, so the option also shows on `localhost` |
 
-### Download methods
+### Download delivery
 
-Settings offers three ways to deliver a download. All three are on by default; turn any of them off with `VITE_DOWNLOAD_METHODS` (below). Streaming always comes first because preparing a file puts load on the server:
-
-| Method | What it does |
-|---|---|
-| **Automatic** (`auto`) | Streams straight away, merges and HLS included; if streaming fails before the first byte, the server prepares a compatible MP4 in the same request |
-| **Fastest** (`stream`) | The same streaming, tuned for the quickest start: when the fallback has to convert, it uses ffmpeg's quickest settings |
-| **Compatible** (`prepare`) | The server builds an H.264/AAC MP4 first, with a real progress bar (download, then conversion), then hands it to the browser. An interrupted download can be resumed |
-
-Choose which of them visitors get with `VITE_DOWNLOAD_METHODS`, a comma-separated list. For example `VITE_DOWNLOAD_METHODS=auto` offers only
-Automatic (the method chooser is then hidden), and `auto,stream` drops Compatible. A visitor whose saved choice is switched off is moved to the first
-enabled method. The old `VITE_ENABLE_DOWNLOAD_METHODS=false` still means Automatic only.
+Every download goes through the backend's `GET /stream?mode=auto`: it streams straight away when the source already
+plays on phones (merges and HLS included), and prepares a compatible H.264/AAC MP4 on the server instead when it
+doesn't. There is nothing to choose on the frontend — the backend decides per download, so a source that would
+otherwise show a black screen on some phones is never handed over broken. This is controlled server-side only, by
+the backend's `DEFAULT_DOWNLOAD_MODE` and `UNSAFE_LARGE_VIDEO_STREAM_ENABLED` (see its `.env.example`).
 
 Audio can be delivered as MP3 for every source with `AUDIO_FORCE_MP3=true` in the **backend's** `.env`; the audio tab then lists MP3 rows with an
 estimated size, and the app needs no setting for it (see the backend's [API docs](https://github.com/ssanaullahrais/blazfetch-api/blob/master/docs/API.md#audio-as-mp3-audio_force_mp3)).
@@ -153,7 +146,6 @@ Every setting is listed with its default and a recommendation in [.env.example](
 | `VITE_SITE_NAME`, `VITE_SITE_TAGLINE`, `VITE_SITE_DESCRIPTION`, `VITE_SITE_URL`, ... | BlazFetch, ... | White label and SEO: name, tagline, description, public URL and more. See [docs/BRANDING.md](docs/BRANDING.md) |
 | `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
 | `VITE_ENABLE_AUDIO_PREVIEW` | off (`true` in `.env.example`) | `true` shows the play button on audio rows (off if the variable is left out, because most audio is M4A/WebM). Best with the backend's `AUDIO_FORCE_MP3=true`, when every track is an MP3: Play loads the audio once into the page's memory, Download then saves that same file without asking the server again, and it is freed when a new link is loaded |
-| `VITE_DOWNLOAD_METHODS` | `auto,stream,prepare` | Which download methods Settings offers: any of `auto` (Automatic), `stream` (Fastest), `prepare` (Compatible), e.g. `auto` for Automatic only |
 | `VITE_ENABLE_PWA` | on | `false` builds a plain website: no install prompt, no offline copy. Visitors who installed an earlier build are cleaned up on their next visit. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#progressive-web-app) |
 | `VITE_SHOW_PLATFORM_DOWNLOADS` | on | `false` hides the download count in each social icon's tooltip on the home page (the name with a download icon and the count, e.g. YouTube ⬇ 15, from the backend's per-platform `platforms` totals in `GET /stats`) |
 | `VITE_SHOW_FETCH_STATS`, `VITE_SHOW_DOWNLOAD_STATS`, `VITE_SHOW_ONLINE_VISITORS` | on | Set any to `false` to hide that counter from the footer. "Online" also needs a backend new enough to send it (`ONLINE_VISITOR_WINDOW_SECONDS` in the API) |
