@@ -73,9 +73,29 @@ describe("bestAudioFormat", () => {
 })
 
 describe("videoRows by size when the source lists no sizes", () => {
-  it("sorts by the estimated sizes, then puts rows with no size last, smallest resolution first", () => {
-    const rows = [fmt("1080", 1080, null), fmt("720", 720, null), fmt("original", null, null), fmt("est", 480, 9_000_000)]
+  it("sorts by the estimated sizes, then puts a heightless row last among the sized ones (before pinning)", () => {
+    // "noheight" has no resolution at all, which the row displays as "Original" and videoRows pins to the
+    // front (see below) — so it is deliberately not a plain height=null row here to isolate the size sort itself.
+    const rows = [fmt("1080", 1080, null), fmt("720", 720, null), fmt("noheight", null, null), fmt("est", 480, 9_000_000)]
     rows[3].filesizeApprox = true
-    expect(videoRows(rows, { bySize: true }).map((f) => f.format_id)).toEqual(["est", "720", "1080", "original"])
+    expect(videoRows(rows, { bySize: true }).map((f) => f.format_id)).toEqual(["noheight", "est", "720", "1080"])
+  })
+})
+
+describe("videoRows pins the source's own file ('Original') first", () => {
+  it("moves a heightless row to the top regardless of the size sort", () => {
+    const rows = [fmt("1080", 1080, 100), fmt("original", null, 40), fmt("720", 720, 60)]
+    expect(videoRows(rows, { bySize: false }).map((f) => f.format_id)).toEqual(["original", "1080", "720"])
+    expect(videoRows(rows, { bySize: true }).map((f) => f.format_id)).toEqual(["original", "720", "1080"])
+  })
+
+  it("does nothing when no row is heightless", () => {
+    const rows = [fmt("1080", 1080, 100), fmt("720", 720, 60)]
+    expect(videoRows(rows, { bySize: false }).map((f) => f.format_id)).toEqual(["1080", "720"])
+  })
+
+  it("still returns only the true best row for bestOnly, even when it is not the heightless one", () => {
+    const rows = [fmt("1080", 1080, 100), fmt("original", null, 40)]
+    expect(videoRows(rows, { bySize: false, bestOnly: true }).map((f) => f.format_id)).toEqual(["1080"])
   })
 })
