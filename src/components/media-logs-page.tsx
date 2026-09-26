@@ -17,10 +17,9 @@ function formatTime(ts: number): string {
 }
 
 /**
- * GET /:platform/:id/logs — lets a visitor look back at their own recent download attempts for one piece of
- * media, so a stuck or failed download shows the real reason instead of just a generic toast. Only ever shows
- * attempts started by this same browser (the backend checks the guest/user cookie), and only for a short while
- * after they happened — see the backend's downloadLogs service.
+ * GET /:platform/:id/logs — shows this media's recent download attempts, so a stuck or failed download shows
+ * the real reason instead of just a generic toast. Public for now (anyone who knows the platform/id can open
+ * this page, no ownership check) and persisted permanently — see the backend's downloadLogs service.
  */
 export function MediaLogsPage() {
   const { platform, id } = useParams<{ platform: string; id: string }>();
@@ -37,7 +36,7 @@ export function MediaLogsPage() {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof ApiError && err.code === "MEDIA_NOT_FOUND" ? "No recent download attempt from this browser was found for this media." : friendlyErrorFor(err));
+        setError(err instanceof ApiError && err.code === "MEDIA_NOT_FOUND" ? "No download attempt was found for this media." : friendlyErrorFor(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -54,7 +53,7 @@ export function MediaLogsPage() {
       </Link>
       <h1 className="text-lg font-semibold">Download logs</h1>
       <p className="text-sm text-muted-foreground">
-        Your own recent download attempts for this media, if any are still on record. Nobody else can see this.
+        Recent download attempts for this media, if any are on record.
       </p>
 
       {loading && (
