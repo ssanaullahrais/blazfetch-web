@@ -76,10 +76,11 @@ export function GithubFooter() {
           href={REPOS[0].url}
           target="_blank"
           rel="noopener noreferrer"
+          title="Free to use, modify and deploy. Running it as a SaaS or other commercial product? Get in touch first — a fee may apply. See LICENSE."
           className="inline-flex items-center gap-1.5 underline-offset-4 transition hover:text-foreground hover:underline"
         >
           <GithubMark className="size-3.5" />
-          Give a star on GitHub
+          Open source on GitHub
           <ExternalLink className="size-3" />
         </a>
         <span aria-hidden className="hidden text-muted-foreground/50 sm:inline">|</span>
