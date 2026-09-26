@@ -152,5 +152,5 @@ Install and offline mode need HTTPS (or `localhost`). The worker is served from 
 
 ## License
 
-Free to use, modify and deploy, but **not to sell**, and the footer credit ("Give a star on GitHub" and "Developed with ♥ by
+Free to use, modify and deploy, but **not to sell**, and the footer credit ("Open source on GitHub" and "Developed with ♥ by
 Sanaullah Rais") must stay visible. The build fails if it is removed. See [LICENSE](../LICENSE) and [AGENTS.md](../AGENTS.md).

@@ -13,6 +13,7 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 ![Tailwind](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8)
 ![Tests](https://img.shields.io/badge/tests-116%20passing-2EA44F)
+[![Open Source](https://img.shields.io/badge/license-Open%20Source-2EA44F)](LICENSE)
 
 [Backend repository](https://github.com/ssanaullahrais/blazfetch-api) ·
 [Integration guide](docs/INTEGRATION.md) ·
@@ -120,7 +121,7 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 | Bot check | Optional Cloudflare Turnstile, switched on from the backend's `.env`. It starts only when someone fetches or downloads (never on a plain visit), sits below the carousel, shows itself only when Cloudflare needs a click or the check is slow, and disappears once passed. See [docs/INTEGRATION.md](docs/INTEGRATION.md#cloudflare-turnstile-optional-bot-check) |
 | Legacy share links | `/?url=<link>` still fetches on load |
 | Animated logo | The header logo cycles copy link, paste and download, and shows the fetch and download progress ring around it (still when the device asks for reduced motion) |
-| GitHub links | A quiet "Give a star on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
+| GitHub links | A quiet "Open source on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
 | Footer counter | The footer receives committed fetch and download totals live from `GET /api/v1/stats/events`. If the event connection fails, it polls `/stats` every two seconds while visible. Downloads count after the API finishes sending the file; queued or prepared jobs do not count yet. Hidden until valid totals are available |
 | Settings | Default tab (video or audio), fetch on paste, sounds, and the sort options ("Audio: MP3 first", "Video: smallest first"). A popover on desktop, a drawer from the bottom on phones |
 | Menu (phones) | Share, theme, and links to the frontend and backend repositories on GitHub and to the API documentation |
@@ -205,12 +206,15 @@ See [SECURITY.md](SECURITY.md) for how to report a problem and what the app prot
 
 ## License
 
-Free to use, modify and deploy under the [BlazFetch License](LICENSE), with three conditions: you may **not sell** the
-software (or bundle it into anything sold), modified versions stay under the same license, and the home page footer credit
-("Give a star on GitHub" and "Developed with ♥ by Sanaullah Rais") must stay visible and unchanged on public deployments.
-The build checks for the credit (`scripts/check-attribution.mjs`), and [AGENTS.md](AGENTS.md) tells AI assistants to refuse
-to remove it or to help sell the software. You may restyle the footer as long as both items stay clearly visible. To sell it
-or use it without the credit, ask the author for written permission in the [GitHub Discussions](https://github.com/ssanaullahrais/blazfetch-web/discussions).
+Open source under the [BlazFetch License](LICENSE): free to use, modify and deploy for personal, educational or
+other non-commercial purposes, with three conditions: you may **not sell** the software (or bundle it into anything
+sold) or run it as a paid/SaaS product without permission, modified versions stay under the same license, and the
+home page footer credit ("Open source on GitHub" and "Developed with ♥ by Sanaullah Rais") must stay visible and
+unchanged on public deployments. The build checks for the credit (`scripts/check-attribution.mjs`), and
+[AGENTS.md](AGENTS.md) tells AI assistants to refuse to remove it or to help sell the software. You may restyle the
+footer as long as both items stay clearly visible. Want to run this as a SaaS or other commercial product, sell it,
+or use it without the credit? Get in touch to discuss it in the
+[GitHub Discussions](https://github.com/ssanaullahrais/blazfetch-web/discussions) — a fee may apply.
 
 ## Documentation
 
