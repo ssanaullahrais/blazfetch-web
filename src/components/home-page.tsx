@@ -32,6 +32,7 @@ import {
   Moon,
   TriangleAlert,
   ListVideo,
+  Monitor,
 } from "lucide-react";
 import { PlatformIcons } from "@/components/platform-icons";
 import { ProgressiveList } from "@/components/progressive-list";
@@ -40,6 +41,7 @@ import { setDownloadsBusy } from "@/lib/busy";
 import { FormatDetailsDialog } from "@/components/format-details-dialog";
 import { DownloadProgressButton } from "@/components/download/download-progress-button";
 import { StopDownloadDialog } from "@/components/download/stop-download-dialog";
+import { PhoneCompatDialog } from "@/components/download/phone-compat-dialog";
 import { reportDownloadError } from "@/lib/reportDownloadError";
 import { ApiError, isCoolDown } from "@/lib/errors";
 import { ErrorToast } from "@/components/error-toast";
@@ -71,7 +73,7 @@ import {
   type Tombstone,
 } from "@/lib/api";
 import { fetchStreamBlob, saveBlobToDisk, startBrowserDownload } from "@/lib/stream-download";
-import { audioRows, bestAudioFormat, bestVideoFormat, videoRows } from "@/lib/format-order";
+import { audioRows, bestAudioFormat, bestVideoFormat, phoneIncompatibleFormatIds, videoRows } from "@/lib/format-order";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { bumpDownloadCount } from "@/lib/site-stats";
 import { SettingsMenu } from "@/components/settings-menu";
@@ -1773,7 +1775,8 @@ function VideoFormatList({
   const isMobile = useIsMobile();
   // bestOnly (auto-download-best) always means the true best quality pick, whatever the display sort below
   // would otherwise put first — the two preferences are about different things and shouldn't fight.
-  const listedFormats = videoRows(info.videoFormats, { bySize: prefs.sortVideoBySmallestSize, bestOnly, isPhone: isMobile });
+  const listedFormats = videoRows(info.videoFormats, { bySize: prefs.sortVideoBySmallestSize, bestOnly });
+  const phoneIncompatibleIds = phoneIncompatibleFormatIds(listedFormats, isMobile);
 
   return (
     <>
@@ -1804,6 +1807,7 @@ function VideoFormatList({
           format={f}
           best={f.format_id === bestFormatId}
           recommended={resLabel === "Original" && f.format_id !== bestFormatId}
+          phoneIncompatible={phoneIncompatibleIds.has(f.format_id)}
           mediaType="video"
           status={downloadStatus[key]}
           progress={progress[key]}
@@ -1942,6 +1946,7 @@ function FormatRow({
   quality,
   best,
   recommended,
+  phoneIncompatible,
   mediaType,
   status,
   progress,
@@ -1967,6 +1972,9 @@ function FormatRow({
   /** The source's own untouched file: always plays, but its real resolution is unknown, so it keeps this badge
    * instead of competing with the true highest-quality pick for "★ Best". */
   recommended?: boolean;
+  /** See phoneIncompatibleFormatIds (format-order.ts): the Download button becomes a disabled-looking "Desktop
+   * only" one that explains why on click, instead of a working download most phones can't play back anyway. */
+  phoneIncompatible?: boolean;
   mediaType?: "video" | "audio";
   status?: "queued" | "preparing" | "ready" | "downloaded";
   /** 0–100 while `status === "preparing"` — paced by simulateProgress; the backend never reports a byte count for this path. */
@@ -2005,6 +2013,7 @@ function FormatRow({
 }) {
   // Audio previews are switched off for now: most audio is M4A/WebM, which is not a plain MP3 to play.
   const onPlayAudio = AUDIO_PREVIEW_ENABLED ? onPlayAudioRequested : undefined;
+  const [showPhoneCompatDialog, setShowPhoneCompatDialog] = useState(false);
   const isDone = status === "downloaded";
   const isPlaying = useIsPlaying(playKey ?? "");
   const { currentTime, duration } = useAudioProgress(playKey ?? "");
@@ -2131,7 +2140,20 @@ function FormatRow({
             </Button>
           )}
           <div className="flex min-w-0 flex-1 items-center gap-1 sm:flex-none">
-          {(() => {
+          {phoneIncompatible ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPhoneCompatDialog(true)}
+                  className="w-full min-w-0 flex-1 border-amber-500/40 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 sm:w-auto sm:flex-none dark:text-amber-400"
+                >
+                  <Monitor className="size-4" /> Desktop only
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>This format needs a desktop or laptop to play</TooltipContent>
+            </Tooltip>
+          ) : (() => {
             const downloadButton = (
               <DownloadProgressButton
                 state={
@@ -2221,6 +2243,9 @@ function FormatRow({
           </motion.div>
         )}
       </AnimatePresence>
+      {phoneIncompatible && (
+        <PhoneCompatDialog open={showPhoneCompatDialog} onOpenChange={setShowPhoneCompatDialog} codec={format?.vcodec} />
+      )}
     </div>
   );
 }
