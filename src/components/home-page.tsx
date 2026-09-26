@@ -40,7 +40,7 @@ import { FormatDetailsDialog } from "@/components/format-details-dialog";
 import { DownloadProgressButton } from "@/components/download/download-progress-button";
 import { StopDownloadDialog } from "@/components/download/stop-download-dialog";
 import { reportDownloadError } from "@/lib/reportDownloadError";
-import { isCoolDown } from "@/lib/errors";
+import { ApiError, isCoolDown } from "@/lib/errors";
 import { ErrorToast } from "@/components/error-toast";
 import { ServiceStatus } from "@/components/service-status";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -632,6 +632,13 @@ export function HomePage() {
     }
     if (status === "preparing") {
       setConfirmState({ kind: "stop", mode, key, sizeLabel });
+      return;
+    }
+    // A guest gets one video (and one audio) download at a time; the server would reject a second with SERVER_BUSY
+    // anyway, so this catches it instantly, client-side, instead of sending the request and waiting on that reply.
+    const alreadyRunning = Object.keys(downloadStatus).some((k) => k !== key && k.startsWith(`${mode}:`) && downloadStatus[k] === "preparing");
+    if (alreadyRunning) {
+      reportDownloadError(new ApiError("SERVER_BUSY", "You already have a download running."), null, prefs.soundEnabled, "Download", undefined, mode);
       return;
     }
     start();
