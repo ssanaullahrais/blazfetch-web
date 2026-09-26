@@ -147,7 +147,6 @@ function startBrowserDownloadNow(params: StreamParams, options: StartOptions = {
     const frame = env.createFrame(url);
     let settled = false;
     let pollTimer: ReturnType<typeof setTimeout> | undefined;
-    let maxTimer: ReturnType<typeof setTimeout> | undefined;
 
     const settle = (action: () => void, keepFrame = false) => {
       if (settled) return;
@@ -179,7 +178,7 @@ function startBrowserDownloadNow(params: StreamParams, options: StartOptions = {
     });
 
     signal?.addEventListener("abort", onAbort, { once: true });
-    maxTimer = setTimeout(
+    const maxTimer = setTimeout(
       () => settle(() => reject(new ApiError("PROCESS_TIMEOUT", "The download took too long to start."))),
       maxWaitMs
     );

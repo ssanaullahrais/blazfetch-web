@@ -1,6 +1,7 @@
 import { Download, ExternalLink, Search, Users } from "lucide-react";
 import { formatCount, SHOW_DOWNLOAD_STATS, SHOW_FETCH_STATS, SHOW_ONLINE_VISITORS, useSiteStats } from "@/lib/site-stats";
 
+// eslint-disable-next-line react-refresh/only-export-components -- plain constants, not components
 export const REPOS = [
   { name: "Frontend", detail: "blazfetch-web", url: "https://github.com/ssanaullahrais/blazfetch-web" },
   { name: "Backend API", detail: "blazfetch-api", url: "https://github.com/ssanaullahrais/blazfetch-api" },

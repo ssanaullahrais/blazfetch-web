@@ -265,6 +265,13 @@ export function HomePage() {
   const [progress, setProgress] = useState<Record<FormatKey, number>>({});
   const [downloadStatus, setDownloadStatus] = useState<Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">>({});
   const [activeTab, setActiveTab] = useState<"video" | "audio" | "images" | "stories">(prefs.defaultMode);
+  // Adjusted during render (not an effect) when the preference changes, so the tab switches in the same paint
+  // instead of flashing the old one first. See https://react.dev/learn/you-might-not-need-an-effect.
+  const [seenDefaultMode, setSeenDefaultMode] = useState(prefs.defaultMode);
+  if (prefs.defaultMode !== seenDefaultMode) {
+    setSeenDefaultMode(prefs.defaultMode);
+    setActiveTab(prefs.defaultMode);
+  }
   // An Instagram profile also looks up its stories in the background: they get their own tab once found.
   const [stories, setStories] = useState<{ username: string; status: "loading" | "ready"; info?: MediaInfo } | null>(null);
   const storiesSeq = useRef(0);
@@ -285,10 +292,6 @@ export function HomePage() {
   const previewControllers = useState(() => new Map<FormatKey, AbortController>())[0];
   const previewRequestSeq = useState(() => new Map<FormatKey, number>())[0];
   const userStoppedKeys = useState(() => new Set<FormatKey>())[0];
-
-  useEffect(() => {
-    setActiveTab(prefs.defaultMode);
-  }, [prefs.defaultMode]);
 
   // Back/forward between stored pages (and back to the home page).
   useEffect(() => {
@@ -951,10 +954,11 @@ export function HomePage() {
     : 0;
   const brandState: BrandState = isDownloading ? "downloading" : loading ? "fetching" : "idle";
 
-  useEffect(() => {
-    if (!confirmState) return;
-    if (downloadStatus[confirmState.key] !== "preparing") setConfirmState(null);
-  }, [confirmState, downloadStatus]);
+  // Adjusted during render (not an effect): once the download this dialog was confirming a stop for is no longer
+  // "preparing", the dialog closes itself in the same paint instead of lingering for a frame.
+  if (confirmState && downloadStatus[confirmState.key] !== "preparing") {
+    setConfirmState(null);
+  }
 
   // The page path (/youtube/<id>) is what gets shared, so the link opens instantly from the backend's stored copy.
   const shareUrl = fetchedUrl && info ? shareUrlForPath(window.location.origin, info.stored?.path, fetchedUrl) : null;

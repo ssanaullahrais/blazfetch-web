@@ -323,6 +323,7 @@ export function PlatformIcon({ platform, className = "size-3.5" }: { platform: s
   );
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- plain lookup helper, not a component
 export function platformDisplayName(platform: string | null) {
   if (!platform) return "Unknown";
   const p = platformBySlug.get(platform.toLowerCase());
@@ -332,6 +333,7 @@ export function platformDisplayName(platform: string | null) {
 /** Real brand color for a platform (falls back to a neutral gray) — used to
  * color chart bars/points the same way the platform's own icon is colored,
  * instead of an arbitrary chart palette. */
+// eslint-disable-next-line react-refresh/only-export-components -- plain lookup helper, not a component
 export function platformColor(platform: string | null) {
   if (!platform) return "#94a3b8";
   const p = platformBySlug.get(platform.toLowerCase());

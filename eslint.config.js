@@ -18,5 +18,10 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // shadcn/ui components export their cva() variant helper (badgeVariants, buttonVariants, ...) alongside the
+      // component itself; that's a plain constant, not a reason to lose fast refresh.
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
+    },
   },
 ])

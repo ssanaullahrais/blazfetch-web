@@ -84,4 +84,5 @@ function TabsContent({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- tabsListVariants is the shared cva() config, not a component
 export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
