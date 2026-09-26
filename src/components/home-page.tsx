@@ -1,4 +1,3 @@
-import { PullToRefresh } from "@/components/pull-to-refresh";
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
@@ -967,7 +966,6 @@ export function HomePage() {
     // The page itself scrolls, like any website: no fixed-height scroll box, whose height (svh) is shorter than
     // the screen once iOS Safari's toolbar collapses, which cut the list off above an empty band.
     <div className="w-full min-w-0">
-    <PullToRefresh onRefresh={goHome} />
     <div
       className={[
         `relative flex min-h-svh min-w-0 w-full flex-col items-center justify-center gap-8 px-4 pb-32 sm:pb-24 ${
