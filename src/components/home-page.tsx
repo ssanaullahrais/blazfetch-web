@@ -283,6 +283,10 @@ export function HomePage() {
   const previewControllers = useState(() => new Map<FormatKey, AbortController>())[0];
   const previewRequestSeq = useState(() => new Map<FormatKey, number>())[0];
   const userStoppedKeys = useState(() => new Set<FormatKey>())[0];
+  // Which key currently "owns" a video/audio download slot, updated synchronously (a ref, not React
+  // state) so a click fired right after the one that started a download always sees it, even before
+  // the state update from that first click has been rendered — see guardedStart.
+  const activeDownloadKeys = useState(() => new Map<"video" | "audio", FormatKey>())[0];
 
   // Back/forward between stored pages (and back to the home page).
   useEffect(() => {
@@ -341,6 +345,7 @@ export function HomePage() {
     for (const { blobUrl } of blobCache.values()) URL.revokeObjectURL(blobUrl);
     blobCache.clear();
     userStoppedKeys.clear();
+    activeDownloadKeys.clear();
     setProgress({});
     setDownloadStatus({});
     setPreviewLoading({});
@@ -555,7 +560,14 @@ export function HomePage() {
     }
   }
 
+  /** Releases the key's claim on its mode's download slot, if it still holds one. */
+  function releaseActiveDownload(key: FormatKey) {
+    const mode = key.split(":")[0] as "video" | "audio";
+    if (activeDownloadKeys.get(mode) === key) activeDownloadKeys.delete(mode);
+  }
+
   function clearDownloadState(key: FormatKey) {
+    releaseActiveDownload(key);
     setProgress((p) => {
       const next = { ...p };
       delete next[key];
@@ -628,11 +640,14 @@ export function HomePage() {
     }
     // A guest gets one video (and one audio) download at a time; the server would reject a second with SERVER_BUSY
     // anyway, so this catches it instantly, client-side, instead of sending the request and waiting on that reply.
-    const alreadyRunning = Object.keys(downloadStatus).some((k) => k !== key && k.startsWith(`${mode}:`) && downloadStatus[k] === "preparing");
-    if (alreadyRunning) {
+    // A ref, not the downloadStatus state, so a click fired right after the one that started a download is never
+    // caught by React not having re-rendered with that first click's "preparing" status yet.
+    const runningKey = activeDownloadKeys.get(mode);
+    if (runningKey !== undefined && runningKey !== key) {
       reportDownloadError(new ApiError("SERVER_BUSY", "You already have a download running."), null, prefs.soundEnabled, "Download", undefined, mode);
       return;
     }
+    activeDownloadKeys.set(mode, key);
     start();
   }
 
@@ -686,6 +701,7 @@ export function HomePage() {
     const cached = blobCache.get(key);
     if (cached) {
       saveBlobToDisk(cached.blob, cached.filename);
+      releaseActiveDownload(key);
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
       if (prefs.soundEnabled) playDownloadCompleteSound();
       return;
@@ -714,6 +730,7 @@ export function HomePage() {
         stopSimulating();
       }
       if (!isCurrent()) return;
+      releaseActiveDownload(key);
       setProgress((p) => ({ ...p, [key]: 100 }));
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
       bumpDownloadCount(); // The footer counts this immediately; the server confirms it later on its own.
@@ -742,6 +759,7 @@ export function HomePage() {
       setDownloadStatus((s) => ({ ...s, [key]: "preparing" }));
       const ext = imageUrl.match(/\.(jpe?g|png|webp|gif)(?:[?#]|$)/i)?.[1]?.toLowerCase() ?? "jpg";
       await saveImage(imageUrl, buildFileName(title, ext, 60));
+      releaseActiveDownload(key);
       setProgress((p) => ({ ...p, [key]: 100 }));
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
       if (prefs.soundEnabled) playDownloadCompleteSound();
@@ -778,6 +796,7 @@ export function HomePage() {
         stopSimulating();
       }
       if (!isCurrent()) return;
+      releaseActiveDownload(key);
       setProgress((p) => ({ ...p, [key]: 100 }));
       setDownloadStatus((s) => ({ ...s, [key]: "downloaded" }));
       bumpDownloadCount(); // The footer counts this immediately; the server confirms it later on its own.
