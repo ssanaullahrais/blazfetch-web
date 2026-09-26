@@ -1,19 +1,19 @@
 import type { MediaFormat } from "@/lib/api";
-import { IS_PHONE_OR_TABLET } from "@/lib/pwa";
 
 /** How many video / audio formats a result lists. */
 export const VIDEO_ROWS = 8;
 export const AUDIO_ROWS = 5;
 
 /** Hides video formats flagged incompatible ("may not play everywhere" — VP9/AV1/etc., see MediaFormat.compatible)
- * on phones/tablets, where many devices and browsers can't decode them at all; desktop always sees every format,
- * since that's rarely a real problem there. Default on; set VITE_HIDE_INCOMPATIBLE_VIDEO_ON_PHONE=false to show
- * every format on every device, matching the previous behavior. */
+ * on a narrow (phone-width) screen, where many devices and browsers can't decode them at all; a wide (desktop)
+ * screen always sees every format, since that's rarely a real problem there. Default on; set
+ * VITE_HIDE_INCOMPATIBLE_VIDEO_ON_PHONE=false to show every format at every width, matching the previous behavior. */
 export const HIDE_INCOMPATIBLE_VIDEO_ON_PHONE = import.meta.env.VITE_HIDE_INCOMPATIBLE_VIDEO_ON_PHONE !== "false";
 
-/** A source with nothing compatible left is shown as-is rather than presenting an empty list. */
-function preferCompatibleOnPhone(formats: MediaFormat[]): MediaFormat[] {
-  if (!IS_PHONE_OR_TABLET || !HIDE_INCOMPATIBLE_VIDEO_ON_PHONE) return formats;
+/** A source with nothing compatible left is shown as-is rather than presenting an empty list. `isPhone` comes from
+ * the caller (see useIsMobile) since screen width can change at runtime, unlike a device's UA. */
+function preferCompatibleOnPhone(formats: MediaFormat[], isPhone: boolean): MediaFormat[] {
+  if (!isPhone || !HIDE_INCOMPATIBLE_VIDEO_ON_PHONE) return formats;
   const compatible = formats.filter((f) => f.compatible !== false);
   return compatible.length ? compatible : formats;
 }
@@ -74,8 +74,8 @@ function pinOriginalFirst(formats: MediaFormat[]): MediaFormat[] {
  * (the highest qualities); they never swap them for others, which sorting everything first and then cutting the
  * list would do (the 8 smallest are 96p, 144p, ...). `bestOnly` is the single best-quality row.
  */
-export function videoRows(formats: MediaFormat[], options: { bySize: boolean; bestOnly?: boolean }): MediaFormat[] {
-  const pool = preferCompatibleOnPhone(formats);
+export function videoRows(formats: MediaFormat[], options: { bySize: boolean; bestOnly?: boolean; isPhone?: boolean }): MediaFormat[] {
+  const pool = preferCompatibleOnPhone(formats, !!options.isPhone);
   if (options.bestOnly) return pool.slice(0, 1);
   const shown = pool.slice(0, VIDEO_ROWS);
   return pinOriginalFirst(options.bySize ? sortBySize(shown) : shown);

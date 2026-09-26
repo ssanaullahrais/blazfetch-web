@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import toast from "@/lib/toast";
 import {
   ExternalLink,
@@ -1769,9 +1770,10 @@ function VideoFormatList({
   // transcode, so an H.264 copy at 720p+ wins instead when one exists. Independent of the size sort below,
   // which only reorders what's displayed underneath it.
   const bestFormatId = bestVideoFormat(info.videoFormats)?.format_id;
+  const isMobile = useIsMobile();
   // bestOnly (auto-download-best) always means the true best quality pick, whatever the display sort below
   // would otherwise put first — the two preferences are about different things and shouldn't fight.
-  const listedFormats = videoRows(info.videoFormats, { bySize: prefs.sortVideoBySmallestSize, bestOnly });
+  const listedFormats = videoRows(info.videoFormats, { bySize: prefs.sortVideoBySmallestSize, bestOnly, isPhone: isMobile });
 
   return (
     <>
