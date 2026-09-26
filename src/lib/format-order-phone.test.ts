@@ -19,40 +19,45 @@ const fmt = (id: string, height: number | null, compatible = true): MediaFormat 
   compatible,
 })
 
-/** HIDE_INCOMPATIBLE_VIDEO_ON_PHONE (format-order.ts) is computed once from import.meta.env at module load, so
+/** DISABLE_INCOMPATIBLE_VIDEO_ON_PHONE (format-order.ts) is computed once from import.meta.env at module load, so
  * testing it disabled means stubbing the env var before a fresh import — same idea as the backend's
- * importWithEnv helper. `isPhone` itself is now a plain parameter (from useIsMobile, a real width check), so it
- * needs no such gymnastics. */
+ * importWithEnv helper. `isPhone` itself is a plain parameter (from useIsMobile, a real width check). */
 async function importWithEnv(envValue?: string) {
   vi.resetModules()
   if (envValue === undefined) vi.unstubAllEnvs()
-  else vi.stubEnv("VITE_HIDE_INCOMPATIBLE_VIDEO_ON_PHONE", envValue)
+  else vi.stubEnv("VITE_DISABLE_INCOMPATIBLE_VIDEO_ON_PHONE", envValue)
   return import("@/lib/format-order")
 }
 
-describe("videoRows hides incompatible formats on a phone-width screen", () => {
+describe("phoneIncompatibleFormatIds", () => {
   afterEach(() => vi.unstubAllEnvs())
 
-  const formats = [fmt("2160-vp9", 2160, false), fmt("1080-h264", 1080, true), fmt("720-h264", 720, true)]
-
-  it("hides incompatible formats when isPhone is true, by default", async () => {
-    const { videoRows } = await importWithEnv()
-    expect(videoRows(formats, { bySize: false, isPhone: true }).map((f) => f.format_id)).toEqual(["1080-h264", "720-h264"])
+  it("flags an incompatible format on a phone-width screen, by default", async () => {
+    const { phoneIncompatibleFormatIds } = await importWithEnv()
+    const formats = [fmt("2160-vp9", 2160, false), fmt("1080-h264", 1080, true)]
+    expect(phoneIncompatibleFormatIds(formats, true)).toEqual(new Set(["2160-vp9"]))
   })
 
-  it("shows every format when isPhone is false, regardless of the setting", async () => {
-    const { videoRows } = await importWithEnv()
-    expect(videoRows(formats, { bySize: false, isPhone: false }).map((f) => f.format_id)).toEqual(["2160-vp9", "1080-h264", "720-h264"])
+  it("flags nothing on a wide (desktop) screen, regardless of compatibility", async () => {
+    const { phoneIncompatibleFormatIds } = await importWithEnv()
+    const formats = [fmt("2160-vp9", 2160, false), fmt("1080-h264", 1080, true)]
+    expect(phoneIncompatibleFormatIds(formats, false)).toEqual(new Set())
   })
 
-  it("shows every format when isPhone is true but explicitly disabled", async () => {
-    const { videoRows } = await importWithEnv("false")
-    expect(videoRows(formats, { bySize: false, isPhone: true }).map((f) => f.format_id)).toEqual(["2160-vp9", "1080-h264", "720-h264"])
+  it("flags nothing when explicitly disabled", async () => {
+    const { phoneIncompatibleFormatIds } = await importWithEnv("false")
+    const formats = [fmt("2160-vp9", 2160, false), fmt("1080-h264", 1080, true)]
+    expect(phoneIncompatibleFormatIds(formats, true)).toEqual(new Set())
   })
 
-  it("falls back to the full list when nothing compatible is left, instead of showing nothing", async () => {
-    const { videoRows } = await importWithEnv()
-    const allIncompatible = [fmt("2160-vp9", 2160, false), fmt("1440-vp9", 1440, false)]
-    expect(videoRows(allIncompatible, { bySize: false, isPhone: true }).map((f) => f.format_id)).toEqual(["2160-vp9", "1440-vp9"])
+  it("flags nothing when every listed format is incompatible, so the visitor isn't left with nothing at all", async () => {
+    const { phoneIncompatibleFormatIds } = await importWithEnv()
+    const formats = [fmt("2160-vp9", 2160, false), fmt("1440-vp9", 1440, false)]
+    expect(phoneIncompatibleFormatIds(formats, true)).toEqual(new Set())
+  })
+
+  it("flags nothing for an empty list", async () => {
+    const { phoneIncompatibleFormatIds } = await importWithEnv()
+    expect(phoneIncompatibleFormatIds([], true)).toEqual(new Set())
   })
 })

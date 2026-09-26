@@ -4,18 +4,25 @@ import type { MediaFormat } from "@/lib/api";
 export const VIDEO_ROWS = 8;
 export const AUDIO_ROWS = 5;
 
-/** Hides video formats flagged incompatible ("may not play everywhere" — VP9/AV1/etc., see MediaFormat.compatible)
- * on a narrow (phone-width) screen, where many devices and browsers can't decode them at all; a wide (desktop)
- * screen always sees every format, since that's rarely a real problem there. Default on; set
- * VITE_HIDE_INCOMPATIBLE_VIDEO_ON_PHONE=false to show every format at every width, matching the previous behavior. */
-export const HIDE_INCOMPATIBLE_VIDEO_ON_PHONE = import.meta.env.VITE_HIDE_INCOMPATIBLE_VIDEO_ON_PHONE !== "false";
+/** On a narrow (phone-width) screen, a video format flagged incompatible ("may not play everywhere" — VP9/AV1/etc.,
+ * see MediaFormat.compatible) keeps its card, but its Download button is swapped for a disabled-looking "Desktop
+ * only" one that explains why on click, instead of letting a download start that likely won't play — a wide
+ * (desktop) screen is never affected, since that's rarely a real problem there. Default on; set
+ * VITE_DISABLE_INCOMPATIBLE_VIDEO_ON_PHONE=false to download normally everywhere, no special handling. */
+export const DISABLE_INCOMPATIBLE_VIDEO_ON_PHONE = import.meta.env.VITE_DISABLE_INCOMPATIBLE_VIDEO_ON_PHONE !== "false";
 
-/** A source with nothing compatible left is shown as-is rather than presenting an empty list. `isPhone` comes from
- * the caller (see useIsMobile) since screen width can change at runtime, unlike a device's UA. */
-function preferCompatibleOnPhone(formats: MediaFormat[], isPhone: boolean): MediaFormat[] {
-  if (!isPhone || !HIDE_INCOMPATIBLE_VIDEO_ON_PHONE) return formats;
-  const compatible = formats.filter((f) => f.compatible !== false);
-  return compatible.length ? compatible : formats;
+/**
+ * Which of the listed formats' rows should show that disabled "Desktop only" state — see
+ * DISABLE_INCOMPATIBLE_VIDEO_ON_PHONE. `isPhone` comes from the caller (see useIsMobile) since screen width can
+ * change at runtime, unlike a device's UA. If every listed format is incompatible, none are disabled: leaving
+ * every row unusable would strand a phone visitor with nothing to download at all, so they're better off
+ * attempting the true best quality (which may still just work) than seeing an all-"Desktop only" list.
+ */
+export function phoneIncompatibleFormatIds(formats: MediaFormat[], isPhone: boolean): Set<string> {
+  if (!isPhone || !DISABLE_INCOMPATIBLE_VIDEO_ON_PHONE || formats.length === 0) return new Set();
+  const incompatible = formats.filter((f) => f.compatible === false);
+  if (incompatible.length === formats.length) return new Set();
+  return new Set(incompatible.map((f) => f.format_id));
 }
 
 /** Smallest file first. Sizes include estimates (bitrate x duration, see toVideoFormat); rows with no size at all
@@ -74,10 +81,9 @@ function pinOriginalFirst(formats: MediaFormat[]): MediaFormat[] {
  * (the highest qualities); they never swap them for others, which sorting everything first and then cutting the
  * list would do (the 8 smallest are 96p, 144p, ...). `bestOnly` is the single best-quality row.
  */
-export function videoRows(formats: MediaFormat[], options: { bySize: boolean; bestOnly?: boolean; isPhone?: boolean }): MediaFormat[] {
-  const pool = preferCompatibleOnPhone(formats, !!options.isPhone);
-  if (options.bestOnly) return pool.slice(0, 1);
-  const shown = pool.slice(0, VIDEO_ROWS);
+export function videoRows(formats: MediaFormat[], options: { bySize: boolean; bestOnly?: boolean }): MediaFormat[] {
+  if (options.bestOnly) return formats.slice(0, 1);
+  const shown = formats.slice(0, VIDEO_ROWS);
   return pinOriginalFirst(options.bySize ? sortBySize(shown) : shown);
 }
 
