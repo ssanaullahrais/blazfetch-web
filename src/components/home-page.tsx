@@ -70,9 +70,6 @@ import {
   type Tombstone,
 } from "@/lib/api";
 import { fetchStreamBlob, saveBlobToDisk, startBrowserDownload } from "@/lib/stream-download";
-import { cancelDownloadJob, startDownloadJob } from "@/lib/jobs";
-import { waitForDownloadJob } from "@/lib/waitForDownloadJob";
-import { startNativeDownload } from "@/lib/download";
 import { audioRows, bestAudioFormat, videoRows } from "@/lib/format-order";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { bumpDownloadCount } from "@/lib/site-stats";
@@ -93,13 +90,8 @@ type FormatKey = string;
 /** One shared empty list: a fresh `[]` on every render would look like a new list to ProgressiveList each time. */
 const NO_ITEMS: never[] = [];
 
-/** The progress-bar method is job-based; a quick preview always uses the streaming endpoint. */
 /** Turn the audio play buttons back on by setting VITE_ENABLE_AUDIO_PREVIEW=true. */
 const AUDIO_PREVIEW_ENABLED = import.meta.env.VITE_ENABLE_AUDIO_PREVIEW === "true";
-
-function streamModeFor(method: ReturnType<typeof usePreferences>["prefs"]["deliveryMode"]) {
-  return method === "progress" ? "auto" : method;
-}
 
 function keyFor(mode: "video" | "audio", format_id?: string) {
   return `${mode}:${format_id ?? "best"}`;
@@ -547,7 +539,7 @@ export function HomePage() {
       const baseName = buildName(mode, media, formatMeta);
       // The file arrives through one streamed request. Audio is small enough to keep in memory for playback.
       const { blob, filename } = await fetchStreamBlob(
-        { url: urlOverride ?? fetchedUrl, kind: mode, formatId: format_id, filename: baseName, mode: streamModeFor(prefs.deliveryMode) },
+        { url: urlOverride ?? fetchedUrl, kind: mode, formatId: format_id, filename: baseName, mode: "auto" },
         { signal, onProgress, fallbackName: `${baseName}.${mode === "audio" ? "m4a" : "mp4"}` }
       );
       const result = { blobUrl: URL.createObjectURL(blob), filename, blob };
@@ -645,8 +637,8 @@ export function HomePage() {
   }
 
   /**
-   * Paces `progress[key]` upward while a download the browser owns (Automatic/Fastest, via
-   * startBrowserDownload) is preparing — that path never reads the response body, by design, so large
+   * Paces `progress[key]` upward while a download the browser owns (via startBrowserDownload) is
+   * preparing — that path never reads the response body, by design, so large
    * files never sit in memory, but it also means the page has no real byte count to show. Rather than
    * leave the CTA's fill bar and percentage blank, it climbs on the same ever-slowing curve
    * fetchStreamBlob already uses when *it* doesn't know a total size, capped short of 100% until the
@@ -702,43 +694,24 @@ export function HomePage() {
     try {
       setProgress((p) => ({ ...p, [key]: 0 }));
       setDownloadStatus((s) => ({ ...s, [key]: "preparing" }));
-      // A visitor whose stored preference still says "progress" (the old, now-removed "Tracked" picker
-      // option) gets exactly what that used to mean: the job pipeline. There's no longer a "progress"
-      // mode to hand to startBrowserDownload, so it's resolved to its closest equivalent, "prepare",
-      // right here — the only two values that can reach the else branch below are "auto" and "stream".
-      const deliveryMode = prefs.deliveryMode === "progress" ? "prepare" : prefs.deliveryMode;
-      if (deliveryMode === "prepare") {
-        // Compatible: the server always builds the file first, so real, server-reported percent is
-        // available for the whole "preparing" wait — use it instead of pacing a guess.
-        await downloadWithProgress(
-          mode,
-          key,
-          urlOverride ?? fetchedUrl,
-          format_id,
-          buildName(mode, media, formatMeta),
-          controller.signal,
-          isCurrent
+      // One request straight to the browser's download manager: the backend decides on its own whether to
+      // stream live or prepare a compatible file first. It resolves when bytes start flowing (or rejects
+      // with the server's own error), so "Preparing" ends exactly when the download begins — but the page
+      // never sees a byte count along the way, so pace the bar instead of leaving it blank (simulateProgress).
+      const stopSimulating = simulateProgress(key);
+      try {
+        await startBrowserDownload(
+          {
+            url: urlOverride ?? fetchedUrl,
+            kind: mode,
+            formatId: format_id,
+            filename: buildName(mode, media, formatMeta),
+            mode: "auto",
+          },
+          { signal: controller.signal }
         );
-      } else {
-        // Automatic/Fastest: one request straight to the browser's download manager. It resolves when
-        // bytes start flowing (or rejects with the server's own error), so "Preparing" ends exactly when
-        // the download begins — but the page never sees a byte count along the way, so pace the bar
-        // instead of leaving it blank (see simulateProgress).
-        const stopSimulating = simulateProgress(key);
-        try {
-          await startBrowserDownload(
-            {
-              url: urlOverride ?? fetchedUrl,
-              kind: mode,
-              formatId: format_id,
-              filename: buildName(mode, media, formatMeta),
-              mode: deliveryMode,
-            },
-            { signal: controller.signal }
-          );
-        } finally {
-          stopSimulating();
-        }
+      } finally {
+        stopSimulating();
       }
       if (!isCurrent()) return;
       setProgress((p) => ({ ...p, [key]: 100 }));
@@ -776,43 +749,6 @@ export function HomePage() {
       reportDownloadError(err, fetchedUrl, prefs.soundEnabled);
       clearDownloadState(key);
     }
-  }
-
-  /**
-   * The job-based download flow, used for the Compatible delivery method: POST /download starts a job on
-   * the server, GET /jobs/:id reports real progress while it prepares the file, then the finished file
-   * goes to the browser. Stop cancels the job. This is the one delivery path with a real byte-based
-   * percentage — Automatic/Fastest instead pace their CTA with simulateProgress, above.
-   */
-  async function downloadWithProgress(
-    mode: "video" | "audio",
-    key: FormatKey,
-    sourceUrl: string,
-    format_id: string | undefined,
-    filename: string,
-    signal: AbortSignal,
-    isCurrent: () => boolean
-  ) {
-    const created = await startDownloadJob({
-      url: sourceUrl,
-      formatId: format_id,
-      kind: mode,
-      filename,
-      quality: !format_id && mode === "video" ? prefs.preferredQuality : undefined,
-    });
-    if (!isCurrent()) return;
-    const settled = await waitForDownloadJob(created.id, {
-      signal,
-      onAbort: () => cancelDownloadJob(created.id),
-      onUpdate: (job) => {
-        if (!isCurrent()) return;
-        if (job.status === "running") setProgress((p) => ({ ...p, [key]: Math.min(99, Math.max(0, job.progress)) }));
-      },
-    });
-    if (!isCurrent()) return;
-    if (settled.status === "cancelled") throw new DOMException("Aborted", "AbortError");
-    if (settled.status === "error") throw new Error(settled.error || "Download failed.");
-    startNativeDownload(created.id);
   }
 
   // Carousel/board videos: the item's own formatId belongs to this post, so the server prepares it
@@ -950,8 +886,8 @@ export function HomePage() {
     setDownloadsBusy(isDownloading);
     return () => setDownloadsBusy(false);
   }, [isDownloading]);
-  // Real for Compatible/an audio preview, simulated for Automatic/Fastest (see simulateProgress) — either
-  // way progress[key] is always populated while preparing, so this ring is never left to just spin.
+  // Real for an audio preview, simulated for a download (see simulateProgress) — either way
+  // progress[key] is always populated while preparing, so this ring is never left to just spin.
   const knownProgress = preparingKeys.map((k) => progress[k] ?? 0).filter((v) => v > 0);
   const brandProgress = isDownloading
     ? knownProgress.length
@@ -1554,7 +1490,7 @@ function PlaylistFormatList({
   info: MediaInfo;
   prefs: ReturnType<typeof usePreferences>["prefs"];
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
-  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  /** 0–100 while a key is "preparing" — paced by simulateProgress; the backend never reports a byte count for this path. */
   progress: Record<FormatKey, number>;
   runDownload: (
     mode: "video" | "audio",
@@ -1663,7 +1599,7 @@ function CarouselVideoList({
   keyPrefix?: string;
   info: MediaInfo;
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
-  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  /** 0–100 while a key is "preparing" — paced by simulateProgress; the backend never reports a byte count for this path. */
   progress: Record<FormatKey, number>;
   runCarouselVideoDownload: (formatId: string, key: FormatKey) => void;
 }) {
@@ -1709,7 +1645,7 @@ function ImageFormatList({
   keyPrefix?: string;
   info: MediaInfo;
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
-  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  /** 0–100 while a key is "preparing" — paced by simulateProgress; the backend never reports a byte count for this path. */
   progress: Record<FormatKey, number>;
   runImageDownload: (imageUrl: string, key: FormatKey, title: string) => void;
 }) {
@@ -1776,7 +1712,7 @@ function VideoFormatList({
   info: MediaInfo;
   prefs: ReturnType<typeof usePreferences>["prefs"];
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
-  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  /** 0–100 while a key is "preparing" — paced by simulateProgress; the backend never reports a byte count for this path. */
   progress: Record<FormatKey, number>;
   runDownload: (mode: "video" | "audio", format_id?: string, mediaOverride?: MediaInfo, formatMeta?: MediaFormat) => void;
   guardedStart: (
@@ -1871,7 +1807,7 @@ function AudioFormatList({
   info: MediaInfo;
   prefs: ReturnType<typeof usePreferences>["prefs"];
   downloadStatus: Record<FormatKey, "queued" | "preparing" | "ready" | "downloaded">;
-  /** 0–100 while a key is "preparing" — real for Compatible, simulated otherwise (see simulateProgress). */
+  /** 0–100 while a key is "preparing" — paced by simulateProgress; the backend never reports a byte count for this path. */
   progress: Record<FormatKey, number>;
   runDownload: (mode: "video" | "audio", format_id?: string, mediaOverride?: MediaInfo, formatMeta?: MediaFormat) => void;
   guardedStart: (
@@ -1999,7 +1935,7 @@ function FormatRow({
   recommended?: boolean;
   mediaType?: "video" | "audio";
   status?: "queued" | "preparing" | "ready" | "downloaded";
-  /** 0–100 while `status === "preparing"` — real for the Compatible delivery method, simulated otherwise. */
+  /** 0–100 while `status === "preparing"` — paced by simulateProgress; the backend never reports a byte count for this path. */
   progress?: number;
   onDownload: () => void;
   playKey?: string;

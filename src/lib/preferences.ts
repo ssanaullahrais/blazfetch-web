@@ -1,9 +1,5 @@
 import { useSyncExternalStore } from "react";
 import type { FilenameStyle } from "./api";
-import type { DeliveryMode } from "./stream-download";
-
-/** The three stream modes, plus "progress": the job flow with a real progress bar. */
-export type DownloadMethod = DeliveryMode | "progress";
 
 export type Preferences = {
   defaultMode: "video" | "audio";
@@ -13,8 +9,6 @@ export type Preferences = {
   soundEnabled: boolean;
   filenameStyle: FilenameStyle;
   disableMetadata: boolean;
-  /** How the backend delivers a download: auto (stream, then prepare if needed), stream only, or prepare (H.264/AAC). */
-  deliveryMode: DownloadMethod;
   /** Off (default): the audio tab sorts by bitrate, highest first. On: MP3 first, then WEBM, then everything
    * else, each tier still by bitrate — the source's own quality mix doesn't always put the most broadly
    * playable format at the top. */
@@ -34,36 +28,9 @@ const HARDCODED_DEFAULTS: Preferences = {
   soundEnabled: true,
   filenameStyle: "basic",
   disableMetadata: false,
-  deliveryMode: "auto",
   sortAudioByCompatibility: false,
   sortVideoBySmallestSize: false,
 };
-
-const ALL_METHODS: DeliveryMode[] = ["auto", "stream", "prepare"];
-
-/** Reads VITE_DOWNLOAD_METHODS, a comma-separated list of the methods visitors may use ("auto" = Automatic,
- * "stream" = Fastest, "prepare" = Compatible), e.g. `auto` to offer only Automatic. Unset means all three.
- * An unusable value falls back to Automatic alone. The old VITE_ENABLE_DOWNLOAD_METHODS=false still means
- * Automatic only. ("progress" is not offered as a choice in settings at all — same underlying prepare flow as
- * Compatible, just with a progress bar — but a stored "progress" keeps working while Compatible is enabled.) */
-export function parseDownloadMethods(list: string | undefined, legacyFlag?: string): DeliveryMode[] {
-  if (!list?.trim()) return legacyFlag === "false" ? ["auto"] : ALL_METHODS;
-  const wanted = list.split(",").map((v) => v.trim().toLowerCase());
-  const picked = ALL_METHODS.filter((m) => wanted.includes(m));
-  return picked.length ? picked : ["auto"];
-}
-
-export const ENABLED_DOWNLOAD_METHODS = parseDownloadMethods(
-  import.meta.env.VITE_DOWNLOAD_METHODS,
-  import.meta.env.VITE_ENABLE_DOWNLOAD_METHODS,
-);
-
-/** Applies the rule above to the merged preferences: a stored method that is switched off becomes the first enabled one. */
-function withMethodRule(prefs: Preferences): Preferences {
-  const mode = prefs.deliveryMode;
-  const allowed = mode === "progress" ? ENABLED_DOWNLOAD_METHODS.includes("prepare") : ENABLED_DOWNLOAD_METHODS.includes(mode);
-  return allowed ? prefs : { ...prefs, deliveryMode: ENABLED_DOWNLOAD_METHODS[0] };
-}
 
 const STORAGE_KEY = "media-downloader:preferences";
 
@@ -93,11 +60,11 @@ function loadOverrides(): Partial<Preferences> {
 
 const serverDefaults: Preferences = HARDCODED_DEFAULTS;
 let overrides: Partial<Preferences> = loadOverrides();
-let state: Preferences = withMethodRule({ ...serverDefaults, ...overrides });
+let state: Preferences = { ...serverDefaults, ...overrides };
 const listeners = new Set<() => void>();
 
 function recompute() {
-  state = withMethodRule({ ...serverDefaults, ...overrides });
+  state = { ...serverDefaults, ...overrides };
   listeners.forEach((l) => l());
 }
 
