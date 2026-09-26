@@ -26,6 +26,24 @@ function sortByCompatibility(formats: MediaFormat[]): MediaFormat[] {
   });
 }
 
+/** Below this, a phone-safe (H.264) format is not worth choosing over a sharper one that needs re-encoding.
+ * Mirrors the backend's own MIN_HEIGHT_TO_PREFER_COMPATIBLE in pickBestVideoFormat. */
+const MIN_HEIGHT_TO_PREFER_COMPATIBLE = 720;
+
+/**
+ * The "★ Best" pick, matching the backend's own default (no formatId sent) instead of blindly the highest
+ * resolution: a VP9/AV1-only source at the top (common at 1440p/4K) needs the server to fully download and
+ * transcode it before anything can play, which can be minutes of work — or worse, for some YouTube manifests,
+ * fail to complete at all — while an H.264 copy at 720p or higher plays instantly with no re-encode. `formats` is
+ * already sorted highest-resolution first (see videoRows), so this is "the first compatible one, unless nothing
+ * compatible reaches 720p, in which case the true highest quality wins".
+ */
+export function bestVideoFormat(formats: MediaFormat[]): MediaFormat | undefined {
+  const compatible = formats.find((f) => f.compatible);
+  if (compatible && (compatible.height ?? 0) >= MIN_HEIGHT_TO_PREFER_COMPATIBLE) return compatible;
+  return formats[0];
+}
+
 /** The source's own untouched file has no parsed resolution, so it is shown as "Original" (see unsizedLabel in
  * api.ts) rather than a height. It always plays (no merge/remux needed) even when it isn't the highest quality,
  * which earns it the top spot regardless of the size sort below. */

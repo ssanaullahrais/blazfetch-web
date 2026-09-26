@@ -70,7 +70,7 @@ import {
   type Tombstone,
 } from "@/lib/api";
 import { fetchStreamBlob, saveBlobToDisk, startBrowserDownload } from "@/lib/stream-download";
-import { audioRows, bestAudioFormat, videoRows } from "@/lib/format-order";
+import { audioRows, bestAudioFormat, bestVideoFormat, videoRows } from "@/lib/format-order";
 import { shareUrlForPath, storedPathFromLocation } from "@/lib/media-path";
 import { bumpDownloadCount } from "@/lib/site-stats";
 import { SettingsMenu } from "@/components/settings-menu";
@@ -1764,9 +1764,11 @@ function VideoFormatList({
       resolution: f?.resolution ?? null,
       vcodec: f?.vcodec ?? null,
     })}.mp4`;
-  // The "★ Best" badge always marks the true highest-quality pick (info.videoFormats' own first entry,
-  // its default order), regardless of the size sort below reordering what's displayed underneath it.
-  const bestFormatId = info.videoFormats[0]?.format_id;
+  // The "★ Best" badge marks the same pick the backend itself defaults to (bestVideoFormat), not just the
+  // raw highest resolution — a VP9/AV1-only source at the top needs a slow, sometimes unreliable server-side
+  // transcode, so an H.264 copy at 720p+ wins instead when one exists. Independent of the size sort below,
+  // which only reorders what's displayed underneath it.
+  const bestFormatId = bestVideoFormat(info.videoFormats)?.format_id;
   // bestOnly (auto-download-best) always means the true best quality pick, whatever the display sort below
   // would otherwise put first — the two preferences are about different things and shouldn't fight.
   const listedFormats = videoRows(info.videoFormats, { bySize: prefs.sortVideoBySmallestSize, bestOnly });

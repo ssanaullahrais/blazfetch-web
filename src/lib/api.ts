@@ -165,6 +165,8 @@ export type MediaFormat = {
   tbr: number | null;
   vcodec?: string | null;
   acodec?: string | null;
+  /** Video only: plays on every phone/browser as-is (H.264 in an MP4), no server-side re-encode needed. */
+  compatible?: boolean;
 };
 
 export type PlaylistEntry = {
@@ -269,6 +271,7 @@ function toVideoFormat(f: ApiFormat, durationSeconds?: number | null): MediaForm
     tbr: f.bitrate ?? null,
     vcodec: f.codec ?? null,
     acodec: null,
+    compatible: f.compatible !== false,
   };
 }
 
