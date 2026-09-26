@@ -16,7 +16,11 @@ export function AudioWave({
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressRef = useRef(progress);
-  progressRef.current = progress;
+  // Kept current via an effect, not during render, so the animation loop below can read the latest value without
+  // re-running its whole canvas setup on every progress tick.
+  useEffect(() => {
+    progressRef.current = progress;
+  }, [progress]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

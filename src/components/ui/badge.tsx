@@ -45,4 +45,5 @@ function Badge({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- badgeVariants is the shared cva() config, not a component
 export { Badge, badgeVariants }

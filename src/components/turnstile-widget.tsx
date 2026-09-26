@@ -24,14 +24,16 @@ export function TurnstileWidget() {
     void initTurnstile(API).catch(() => markCheckFailed());
   }, []);
 
-  // A check that is taking long is shown in full; a finished or idle one goes back to background mode.
+  // A check that is taking long is shown in full; a finished or idle one goes back to background mode. The reset
+  // to hidden happens in the cleanup (status changing away from "needed", or unmount), not in the effect body
+  // itself, so the next time it becomes "needed" it waits out the delay again instead of showing immediately.
   useEffect(() => {
-    if (status !== "needed") {
-      setVisible(false);
-      return;
-    }
+    if (status !== "needed") return;
     const timer = setTimeout(() => setVisible(true), SHOW_AFTER_MS);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      setVisible(false);
+    };
   }, [status]);
 
   // Once the check is passed the widget has done its job: take it out of the page completely.
