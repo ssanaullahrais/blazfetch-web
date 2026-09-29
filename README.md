@@ -30,6 +30,8 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 
 ## Demo
 
+**https://social.blaztools.com
+**
 <div align="center">
 
 <a href="docs/media/demo.mp4"><img src="docs/media/demo.gif" alt="BlazFetch demo: paste a link, pick a quality, download" width="760" /></a>
