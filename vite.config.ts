@@ -4,6 +4,7 @@ import react from "@vitejs/plugin-react"
 import { defineConfig, loadEnv, type Plugin } from "vite"
 import { VitePWA } from "vite-plugin-pwa"
 import { createSite, type Site } from "./src/config/site"
+import { backendProxy as createBackendProxy } from "./scripts/backend-proxy"
 
 const escapeAttr = (text: string): string => text.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
@@ -66,6 +67,9 @@ Sitemap: ${site.url}/sitemap.xml
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), "VITE_"), ...process.env };
   const site = createSite(env);
+  // Server-only: never use a VITE_* variable for the private backend credential.
+  const proxyEnv = { ...loadEnv(mode, process.cwd(), "BLAZFETCH_"), ...process.env };
+  const backendProxy = createBackendProxy(proxyEnv.BLAZFETCH_API_KEY);
   // VITE_ENABLE_PWA=false turns the installable app and offline shell off. Keep the same value in src/lib/pwa.ts.
   const pwaEnabled = env.VITE_ENABLE_PWA !== "false";
   return {
@@ -139,12 +143,10 @@ export default defineConfig(({ mode }) => {
     host: "0.0.0.0",
     proxy: {
       "/api": {
-        target: "http://localhost:4000",
-        changeOrigin: true,
+        ...backendProxy,
       },
       "/health": {
-        target: "http://localhost:4000",
-        changeOrigin: true,
+        ...backendProxy,
       },
     },
   },
@@ -157,12 +159,10 @@ export default defineConfig(({ mode }) => {
     host: "0.0.0.0",
     proxy: {
       "/api": {
-        target: "http://localhost:4000",
-        changeOrigin: true,
+        ...backendProxy,
       },
       "/health": {
-        target: "http://localhost:4000",
-        changeOrigin: true,
+        ...backendProxy,
       },
     },
   },

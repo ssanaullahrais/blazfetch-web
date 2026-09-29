@@ -34,7 +34,7 @@ export function ProgressiveList<T>({
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) setCount((current) => Math.min(items.length, current + pageSize));
       },
-      { rootMargin: "400px 0px" },
+      { root: node.closest('[data-slot="scroll-area-viewport"]'), rootMargin: "400px 0px" },
     );
     observer.observe(node);
     return () => observer.disconnect();

@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { PlatformIcons } from "@/components/platform-icons";
 import { ProgressiveList } from "@/components/progressive-list";
+import { DownloadScrollArea } from "@/components/download/download-scroll-area";
 import { instagramProfileUrl, instagramStoriesUrl, parseInstagramProfileLink } from "@/lib/instagram-links";
 import { setDownloadsBusy } from "@/lib/busy";
 import { FormatDetailsDialog } from "@/components/format-details-dialog";
@@ -1351,6 +1352,7 @@ export function HomePage() {
               )
             )}
 
+            <DownloadScrollArea key={`${info.webpage_url}:${activeTab}`}>
             {info.type === "images" ? (
               <TabsContent value="images" className="flex flex-col gap-2 pt-3">
                 <ImageFormatList
@@ -1481,6 +1483,7 @@ export function HomePage() {
                 </TabsContent>
               </>
             )}
+            </DownloadScrollArea>
           </Tabs>
           </Card>
           </motion.div>
@@ -1550,12 +1553,11 @@ function PlaylistFormatList({
   previewProgress?: Record<FormatKey, number>;
 }) {
   const entries = info.entries ?? [];
-  const [visibleCount, setVisibleCount] = useState(25);
-  const visibleEntries = entries.slice(0, visibleCount);
 
   return (
     <>
-      {visibleEntries.map((entry) => {
+      <ProgressiveList items={entries} pageSize={25}>
+      {(visibleEntries) => visibleEntries.map((entry) => {
         const entryMedia: MediaInfo = {
           ...info,
           id: entry.id,
@@ -1602,17 +1604,7 @@ function PlaylistFormatList({
           />
         );
       })}
-      {visibleCount < entries.length && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-1 w-full text-xs"
-          onClick={() => setVisibleCount((count) => Math.min(entries.length, count + 25))}
-        >
-          Show more ({entries.length - visibleCount} left)
-        </Button>
-      )}
+      </ProgressiveList>
     </>
   );
 }

@@ -16,6 +16,12 @@ import pinterestBoard from "@/lib/__fixtures__/pinterest-board.json"
 const asApi = (fixture: unknown) => fixture as any
 
 describe("toMediaInfo (real backend responses)", () => {
+  it("preserves playlist limit information without dropping entries", () => {
+    const data = { ...youtubePlaylist, metadata: { playlistLimit: 1000, playlistTruncated: true } };
+    const info = toMediaInfo(asApi(data));
+    expect(info.entries).toHaveLength(youtubePlaylist.playlist.items.length);
+    expect(info.playlistListing).toEqual({ limit: 1000, truncated: true });
+  });
   it("maps a YouTube video: formats highest first, audio rows, stable path and stats", () => {
     const info = toMediaInfo(asApi(youtube))
     expect(info).toMatchObject({ type: "video", extractor: "youtube", id: "dQw4w9WgXcQ", uploader: "Rick Astley" })

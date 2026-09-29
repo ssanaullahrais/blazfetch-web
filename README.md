@@ -12,7 +12,6 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 ![Vite](https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white)
 ![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8)
-![Tests](https://img.shields.io/badge/tests-116%20passing-2EA44F)
 [![Open Source](https://img.shields.io/badge/license-Open%20Source-2EA44F)](LICENSE)
 
 [Backend repository](https://github.com/ssanaullahrais/blazfetch-api) ·
@@ -50,33 +49,9 @@ A fast, clean web app for saving video, audio and photos from 18 social platform
 
 ## Platform status
 
-Every platform was tested with real downloads against the backend. The backend's
-[API docs](https://github.com/ssanaullahrais/blazfetch-api/blob/master/docs/API.md#responses-by-platform)
-show a real response for each one.
+The backend provides 18 platform adapters. See its [platform status](https://github.com/ssanaullahrais/blazfetch-api#platform-status) for sample results and restrictions; support varies by source and deployment network.
 
-| Platform | Status | Notes |
-|---|---|---|
-| YouTube | ✅ Confirmed | Video and playlists. If YouTube temporarily blocks the server's IP, a fallback provider serves the request automatically |
-| TikTok | ✅ Confirmed | Videos and slideshows |
-| Instagram | ✅ Confirmed | Posts, reels and carousels (profile listing is not supported) |
-| X / Twitter | ✅ Confirmed | Both `x.com` and `twitter.com`, including posts X hides from anonymous requests (served by the backend's fallback) |
-| Facebook | ✅ Confirmed | Reels and public videos. Posts that need a login return a clear error |
-| Reddit | ✅ Confirmed | Including separate video and audio streams |
-| Vimeo | ✅ Confirmed | DRM-protected videos return a clear error |
-| Dailymotion | ✅ Confirmed | Some clips have no audio at the source |
-| Bluesky | ✅ Confirmed | |
-| Streamable | ✅ Confirmed | |
-| Rutube | ✅ Confirmed | |
-| SoundCloud | ✅ Confirmed (single track) | Audio only. Profile pages and DRM-protected (Go+) tracks are not supported |
-| Snapchat | ✅ Confirmed | |
-| Twitch | ✅ Confirmed | VODs, including 50+ minute recordings |
-| Pinterest | ✅ Confirmed (pins and boards) | Large boards page through a range picker |
-| Loom | ✅ Confirmed | Video and audio |
-| Newgrounds | ✅ Confirmed | Public movies with a video |
-| Tumblr | ⚠️ Wired, untested | |
-
-The app also reads the live list from the backend (`GET /api/v1/platforms`) for its logo grid, and the health
-button at the top right shows whether the backend is up.
+The logo grid uses `GET /api/v1/platforms`; the status button checks `GET /health/ready`.
 
 ## Quick start
 
@@ -102,41 +77,25 @@ The dev server proxies `/api` and `/health` to `http://localhost:4000`, so local
 
 ## Features
 
-| Feature | Notes |
+| Feature | Behavior |
 |---|---|
-| Paste button | With an empty box the button reads "Paste & Fetch": one tap pastes the copied link and fetches it (needs clipboard permission; otherwise long-press the box). Once a result is showing it reads "Paste Another". With text in the box it reads "Fetch". Same on every device |
-| Fetch a link | Title, thumbnail, author and duration, with video and audio formats to choose from |
-| Video and Audio (MP3) tabs | Each format shows quality, size and codec, with a details dialog. "Best quality" needs no choosing |
-| Audio preview | Built in but off by default (see `VITE_ENABLE_AUDIO_PREVIEW`) |
-| Playlists | YouTube playlists list every video; open one to fetch its formats |
-| Carousels and galleries | Instagram carousels and Pinterest pins and boards: videos and images in separate tabs |
-| Large boards | Pinterest board range picker |
-| Downloads | Automatic delivery straight to the browser's download manager, with a live "Preparing…" then "Started" state |
-| Stop | Cancels the download and the backend cleans up its processes |
-| Refresh | Re-fetches a link and skips the backend's metadata cache |
-| Stable pages | Each item's permanent path is put in the address bar and can be shared |
-| Media store info | Download count, "May be outdated" (revalidation failed) and "Backup source" (fallback provider) badges, playlist page link |
-| Unavailable media | A removed video (HTTP 410) shows a "No longer available" card with the reason and dates |
-| White label and SEO | The site name, tagline, description and URL come from one file (`src/config/site.ts`) or `VITE_SITE_*` variables, and feed the header, tab titles, share text, app name, meta tags, Open Graph, JSON-LD, sitemap and robots. Result pages get their own title, description and preview |
-| Bot check | Optional Cloudflare Turnstile, switched on from the backend's `.env`. It starts only when someone fetches or downloads (never on a plain visit), sits below the carousel, shows itself only when Cloudflare needs a click or the check is slow, and disappears once passed. See [docs/INTEGRATION.md](docs/INTEGRATION.md#cloudflare-turnstile-optional-bot-check) |
-| Legacy share links | `/?url=<link>` still fetches on load |
-| Animated logo | The header logo cycles copy link, paste and download, and shows the fetch and download progress ring around it (still when the device asks for reduced motion) |
-| GitHub links | A quiet "Open source on GitHub" link at the bottom of the home page opens this repository, whose README links the backend |
-| Footer counter | The footer receives committed fetch and download totals live from `GET /api/v1/stats/events`. If the event connection fails, it polls `/stats` every two seconds while visible. Downloads count after the API finishes sending the file; queued or prepared jobs do not count yet. Hidden until valid totals are available |
-| Settings | Default tab (video or audio), fetch on paste, sounds, and the sort options ("Audio: MP3 first", "Video: smallest first"). A popover on desktop, a drawer from the bottom on phones |
-| Menu (phones) | Share, theme, and links to the frontend and backend repositories on GitHub and to the API documentation |
-| Installable app (PWA) | On by default. Visitors can install it to the home screen or desktop with a floating "Install" card that appears for a few seconds on each visit until the app is installed, and an **Install app** row in the phone menu (on iPhone and iPad it shows the Share, Add to Home Screen steps, and it is hidden once installed or where the browser cannot install), it opens instantly and offline, and after a deploy it updates itself: it checks hourly and whenever the app is reopened, then reloads quietly the moment the visitor leaves the page and no download is running. While the page is in view only a "New version is available · Reload" card is shown, so a download is never cut off. API calls always go to the network. Turn it off with `VITE_ENABLE_PWA=false`. `pnpm dev` serves the manifest and a service worker too, so the option also shows on `localhost` |
+| Fetch | Paste a supported link; show metadata, video/audio formats and photos |
+| Downloads | Browser-managed delivery through the backend; preparing, started, error and stop states |
+| Playlists | Rows load automatically while scrolling inside a bounded result card; open an entry for formats |
+| Collections | Separate image/video tabs; Pinterest board range picker |
+| Refresh | Replace cached metadata |
+| Stable pages | Shareable result paths; removed-media and stale-result states |
+| Audio preview | Optional; loads audio once and reuses it for download |
+| Settings | Default tab, paste behavior, sounds and format sorting |
+| Live stats | Completed-transfer totals via SSE, with polling fallback |
+| Bot check | Optional backend Turnstile; no challenge on a plain page visit |
+| Themes and PWA | Light/dark themes, responsive layout, install/offline shell and safe update prompts |
 
 ### Download delivery
 
-Every download goes through the backend's `GET /stream?mode=auto`: it streams straight away when the source already
-plays on phones (merges and HLS included), and prepares a compatible H.264/AAC MP4 on the server instead when it
-doesn't. There is nothing to choose on the frontend — the backend decides per download, so a source that would
-otherwise show a black screen on some phones is never handed over broken. This is controlled server-side only, by
-the backend's `DEFAULT_DOWNLOAD_MODE` and `UNSAFE_LARGE_VIDEO_STREAM_ENABLED` (see its `.env.example`).
+Downloads use `GET /stream?mode=auto`. The backend selects streaming or compatible prepared delivery; the frontend has no delivery-mode selector. "Started" means the browser received the download handoff, not completed delivery.
 
-Audio can be delivered as MP3 for every source with `AUDIO_FORCE_MP3=true` in the **backend's** `.env`; the audio tab then lists MP3 rows with an
-estimated size, and the app needs no setting for it (see the backend's [API docs](https://github.com/ssanaullahrais/blazfetch-api/blob/master/docs/API.md#audio-as-mp3-audio_force_mp3)).
+Set backend `AUDIO_FORCE_MP3=true` for MP3 audio. See the [integration guide](docs/INTEGRATION.md#download-flow) for cookies, cancellation and error handling.
 
 ## Configuration
 
@@ -145,7 +104,8 @@ Every setting is listed with its default and a recommendation in [.env.example](
 | Variable | Default | Purpose |
 |---|---|---|
 | `VITE_SITE_NAME`, `VITE_SITE_TAGLINE`, `VITE_SITE_DESCRIPTION`, `VITE_SITE_URL`, ... | BlazFetch, ... | White label and SEO: name, tagline, description, public URL and more. See [docs/BRANDING.md](docs/BRANDING.md) |
-| `VITE_API_BASE` | empty (same origin) | Set only when the API lives on another origin, e.g. `https://api.example.com`. Add this site to the backend's `CORS_ALLOWED_ORIGINS` |
+| `VITE_API_BASE` | empty (same origin) | Keep empty for the recommended server-side proxy setup |
+| `BLAZFETCH_API_KEY` | empty | Server-only dev/preview proxy key when backend protection is enabled. Never prefix with `VITE_`; see [deployment](docs/DEPLOYMENT.md#optional-backend-protection) |
 | `VITE_ENABLE_AUDIO_PREVIEW` | off (`true` in `.env.example`) | `true` shows the play button on audio rows (off if the variable is left out, because most audio is M4A/WebM). Best with the backend's `AUDIO_FORCE_MP3=true`, when every track is an MP3: Play loads the audio once into the page's memory, Download then saves that same file without asking the server again, and it is freed when a new link is loaded |
 | `VITE_ENABLE_PWA` | on | `false` builds a plain website: no install prompt, no offline copy. Visitors who installed an earlier build are cleaned up on their next visit. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#progressive-web-app) |
 | `VITE_DISABLE_INCOMPATIBLE_VIDEO_ON_PHONE` | on | A video format flagged "may not play everywhere" (VP9/AV1/etc.) keeps its card on a narrow, phone-width screen (under 768px), but its Download button becomes a disabled "Desktop only" one that explains why on click; a wide (desktop) screen always downloads normally. `false` downloads normally everywhere. If every listed format is incompatible, none are disabled |
@@ -177,7 +137,7 @@ The proxy target for `pnpm dev` and `pnpm preview` is in [vite.config.ts](vite.c
 src/
   components/
     home-page.tsx          search, result card, tabs, format rows, range picker
-    settings-menu.tsx      download method and preferences: a popover on desktop, a bottom drawer on phones
+    settings-menu.tsx      preferences: desktop popover, phone drawer
     install-app.tsx        floating "Install" card, the phone menu's Install app row, iPhone steps
     unavailable-card.tsx   "No longer available" card for removed media
     download/              download button and stop dialog

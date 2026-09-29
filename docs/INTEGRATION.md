@@ -3,7 +3,7 @@
 All calls go through [src/lib/api.ts](../src/lib/api.ts). Base path: `{VITE_API_BASE}/api/v1`. Requests send
 credentials so the backend's guest cookie (`blazfetch_guest_id`) works. See the
 [backend repository](https://github.com/ssanaullahrais/blazfetch-api) and its `docs/API.md` (and
-`docs/openapi.yaml`) for the full request and response shapes, with a real response for every platform.
+`docs/openapi.yaml`) for request/response schemas and sample JSON responses.
 
 ## Endpoint map
 
@@ -45,13 +45,11 @@ integrating your own client and want that instead of `GET /stream`.
   best bitrate first. DRC variants are dropped.
 - **Row order:** the list shows the first 8 video and 5 audio rows. "Sort video by smallest size" and "Sort audio by
   compatibility" only reorder those rows (`src/lib/format-order.ts`); they never swap in other formats.
-- **Audio as MP3:** when the backend runs with `AUDIO_FORCE_MP3=true` (the recommended setting in its `.env.example`), every entry of `audioFormats[]`
-  arrives as `ext: "mp3"` with `isConverted: true` and an estimated size, so the audio tab lists MP3 rows and the file is named `.mp3`. The
-  app needs no setting for it. With `VITE_ENABLE_AUDIO_PREVIEW=true` the play button works on every row.
-- **No audio track at the source:** the `/fetch/audio` result contains a synthetic `mp3-from-<formatId>` option,
+- **Audio as MP3:** with backend `AUDIO_FORCE_MP3=true`, audio formats use `ext: "mp3"`; `isConverted` indicates conversion is needed (already-MP3 sources remain false). No frontend setting is required. `VITE_ENABLE_AUDIO_PREVIEW=true` enables preview buttons.
+- **No separate audio format:** `/fetch/audio` can offer a synthetic `mp3-from-<formatId>` option,
   which the backend converts with ffmpeg.
-- **Playlist:** `playlist.items[]` become a list; opening an entry fetches that video.
-- **Stored info:** `stored` gives the stable `path`, `playlistPath`, `cached`, `validationFailed` and `stats`; `fallbackUsed` names the YouTube fallback provider when it served the result.
+- **Playlist:** `playlist.items[]` render in batches of 25 with automatic scroll loading and a Show more fallback. The shared `DownloadScrollArea` bounds the result card to `min(480px, 55dvh)`. Opening an entry fetches its formats. Backend listing defaults to 1,000; raise `MAX_PLAYLIST_ITEMS` and refresh cached listings if `metadata.playlistTruncated` is set.
+- **Stored info:** `stored` gives stable paths, cache/validation state and stats; `fallbackUsed` identifies recovery on any platform.
 - **Carousel / Pinterest board:** `items[]` are split into videos (downloaded through `/stream` in `prepare` mode with the post URL
   and the item's own `formatId`) and images (saved from `items[].source` directly, because the backend does not
   proxy images). Board responses include `metadata.totalPinCount`, which drives the range picker.
@@ -95,6 +93,8 @@ seconds. Keep buffering disabled for `/api/v1/stats/events`; the backend sends `
 The UI retains the last valid totals through temporary outages and reconnects when a hidden tab becomes visible.
 
 ## Errors
+
+With backend API-key protection enabled, the server-side proxy must supply `X-API-Key`. A missing/wrong key returns `401 API_AUTH_REQUIRED`. Never add it in the browser client; see [deployment](DEPLOYMENT.md#optional-backend-protection).
 
 The backend always returns `{ success: false, error: { code, message } }`. `request()` in `api.ts` throws an
 `ApiError` with `code`, `message` and HTTP `status`. `friendlyErrorFor()` turns codes into plain wording for toasts. Codes: `UNSUPPORTED_PLATFORM`, `INVALID_URL`, `MEDIA_NOT_FOUND`,

@@ -17,7 +17,8 @@ leaks, rotate it in its dashboard first.
 - **External links** open with `rel="noopener noreferrer"`.
 - **No secrets in the browser:** the Cloudflare Turnstile site key is public by design and comes from the backend; the secret
   key exists only on the server. The app stores only display preferences in the browser.
-- **Downloads:** files go straight to the browser's download manager; nothing is kept in memory or on disk by the app.
+- **API keys:** optional backend credentials belong in the server-side proxy, never in browser code or `VITE_*` settings. See [deployment](docs/DEPLOYMENT.md#optional-backend-protection).
+- **Downloads:** normal downloads use the browser's download manager. Optional audio previews use an in-memory blob, released when the result changes.
 - **Content-Security-Policy:** docs/DEPLOYMENT.md gives a ready policy that allows scripts only from the site itself and
   Cloudflare Turnstile. It has been checked against the built app, with and without Turnstile.
 

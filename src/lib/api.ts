@@ -231,6 +231,7 @@ export type MediaInfo = {
   /** Audio only (e.g. a SoundCloud track): there is no video to offer. */
   audioOnly?: boolean;
   entries?: PlaylistEntry[];
+  playlistListing?: { limit: number; truncated: boolean };
   images?: ImageItem[];
   /** "carousel" only: videos from a multi-item post. `images` may hold the photos of a mixed post. */
   carouselVideos?: CarouselVideoItem[];
@@ -402,6 +403,7 @@ function toMediaInfoRaw(data: ApiFetchResponse): MediaInfo {
     return {
       ...base,
       type: "playlist",
+      playlistListing: { limit: Number(data.metadata?.playlistLimit) || data.playlist.items.length, truncated: data.metadata?.playlistTruncated === true },
       entries: data.playlist.items.map((it) => ({
         id: it.videoId,
         title: it.title,

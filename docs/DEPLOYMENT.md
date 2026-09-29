@@ -59,6 +59,32 @@ In the backend's `.env`, set `TRUST_PROXY=1` (Nginx is one proxy in front of it)
 real IP address, which its per-IP limits need. Without it those limits switch themselves off rather than make every
 visitor share Nginx's address.
 
+## Optional backend protection
+
+If backend `API_AUTH_ENABLED=true`:
+
+1. Keep `VITE_API_BASE` empty.
+2. For dev/preview, set `BLAZFETCH_API_KEY=<backend API_AUTH_KEY>` in private `.env.local` and restart Vite.
+3. For production, create a private Nginx snippet:
+
+   ```nginx
+   # /etc/nginx/snippets/blazfetch-api-key.conf
+   proxy_set_header X-API-Key "<backend API_AUTH_KEY>";
+   ```
+
+4. Include it inside both `/api/` and `/health` locations above:
+
+   ```nginx
+   include /etc/nginx/snippets/blazfetch-api-key.conf;
+   ```
+
+5. Set backend `HOST=127.0.0.1`, keep port 4000 private, validate `sudo nginx -t`, reload Nginx and restart the backend.
+6. Check lookup, completed download, readiness and live stats through the website.
+
+Never put the key in `VITE_*`, browser code or Git. The static build does not contain Vite's proxy. The public website proxy remains automatable; keep Turnstile and rate limits. Direct browser calls to a separate API domain cannot keep this key secret.
+
+Full backend setup, rotation and disable steps: [API-key guide](https://github.com/ssanaullahrais/blazfetch-api/blob/master/docs/api-protection.md).
+
 ## Security headers
 
 Add these to the `server` block so browsers apply sensible protections to the site:
